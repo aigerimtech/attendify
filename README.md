@@ -42,3 +42,105 @@ Role-based routing ensures users only see functionalities assigned to their role
 ---
 
 ## 📁 Repository Structure
+attendify/
+│
+├── frontend/ → React Web Application (Role-based UI)
+├── backend/ → Python REST API
+├── ml-service/ → Face Recognition Service
+├── database/ → SQL Schema & Migrations
+├── docs/ → SDD and Diagrams
+└── README.md
+
+
+---
+
+## 🚀 Development Workflow
+
+We follow a branch-based development strategy.
+
+Main branches:
+
+- main → Stable production version
+- develop → Integration branch
+
+Feature branches:
+
+- feature/frontend-*
+- feature/backend-*
+- feature/ml-*
+- feature/database-*
+
+No direct commits to main.
+
+All changes must go through Pull Requests and review by at least one teammate.
+
+---
+
+## 🔁 Weekly Workflow
+
+1. Create feature branch
+2. Implement feature
+3. Push branch
+4. Create Pull Request to `develop`
+5. Review by teammate
+6. Merge after approval
+
+---
+
+## ⚙️ Tech Stack
+
+Frontend:
+- React
+- Axios
+- React Router
+
+Backend:
+- Python (FastAPI or Django REST)
+- JWT Authentication
+
+Database:
+- PostgreSQL
+
+ML:
+- OpenCV
+- Face Embedding Comparison
+
+---
+
+## 🔒 Security Features
+
+- JWT Authentication
+- Role-Based Access Control
+- Time-limited QR tokens
+- Face verification for identity validation
+- Encrypted API communication (HTTPS in deployment)
+
+---
+
+## 📌 Project Status
+
+Currently in: Initial Development Phase
+
+Modules under implementation:
+- Authentication
+- Session & QR Management
+- Face Recognition
+- Attendance Processing
+
+---
+
+## 📞 Team Coordination
+
+Project Management:
+- Jira for sprint tracking
+- GitHub for version control
+- Weekly sprint review meetings
+
+All team members are responsible for:
+- Writing clean code
+- Respecting module boundaries
+- Reviewing pull requests
+- Testing before merging
+
+---
+
