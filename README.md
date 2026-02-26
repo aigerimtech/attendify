@@ -43,14 +43,12 @@ Role-based routing ensures users only see functionalities assigned to their role
 
 ## 📁 Repository Structure
 attendify/
-│
-├── frontend/ → React Web Application (Role-based UI)
-├── backend/ → Python REST API
-├── ml-service/ → Face Recognition Service
-├── database/ → SQL Schema & Migrations
-├── docs/ → SDD and Diagrams
-└── README.md
-
+├── frontend/      # React Web Application (Role-based UI)
+├── backend/       # Python REST API
+├── ml-service/    # Face Recognition Service
+├── database/      # SQL Schema & Migrations
+├── docs/          # SDD and Diagrams
+└── README.md      # Project Overview and Documentation
 
 ---
 
