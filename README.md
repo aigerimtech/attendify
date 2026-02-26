@@ -141,4 +141,3 @@ All team members are responsible for:
 - Testing before merging
 
 ---
-
