@@ -1,0 +1,361 @@
+/* ── Root & background ───────────────────────────────────────── */
+.fs-root {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fs-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #dbeafe 0%, #eff6ff 40%, #ffffff 100%);
+  z-index: 0;
+}
+
+.fs-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, #93c5fd 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.45;
+}
+
+/* ── Content layer ───────────────────────────────────────────── */
+.fs-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 24px 32px;
+  min-height: 100vh;
+}
+
+/* ── Logo ────────────────────────────────────────────────────── */
+.fs-logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.fs-logo-icon {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+  margin-bottom: 12px;
+}
+
+.fs-logo-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  width: 22px;
+  height: 22px;
+  background: #22c55e;
+  border-radius: 50%;
+  border: 2.5px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.fs-app-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e3a5f;
+  letter-spacing: -0.3px;
+  margin-bottom: 3px;
+}
+
+.fs-tagline {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+/* ── Step indicators ─────────────────────────────────────────── */
+.fs-steps {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 0;
+}
+
+.fs-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.fs-step-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background: #ffffff;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fs-step-label {
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fs-step-done .fs-step-circle {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #ffffff;
+}
+
+.fs-step-done .fs-step-label {
+  color: #22c55e;
+}
+
+.fs-step-active .fs-step-circle {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.fs-step-active .fs-step-label {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.fs-step-line {
+  width: 36px;
+  height: 2px;
+  background: #e2e8f0;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.fs-step-line-done {
+  background: #22c55e;
+}
+
+/* ── Card ────────────────────────────────────────────────────── */
+.fs-card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px 20px 22px;
+  box-shadow: 0 4px 32px rgba(30, 58, 95, 0.10);
+  margin-bottom: 18px;
+}
+
+.fs-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-bottom: 7px;
+  letter-spacing: -0.2px;
+  text-align: center;
+}
+
+.fs-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+/* ── Camera area ─────────────────────────────────────────────── */
+.fs-camera-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.fs-camera-ring {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 4px solid #3b82f6;
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.12);
+  overflow: hidden;
+  background: #0f172a;
+  flex-shrink: 0;
+}
+
+.fs-camera-ring-captured {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+}
+
+.fs-webcam {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fs-camera-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Success banner ──────────────────────────────────────────── */
+.fs-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 13px;
+  color: #15803d;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.fs-success svg {
+  flex-shrink: 0;
+  color: #22c55e;
+}
+
+/* ── Permission error ────────────────────────────────────────── */
+.fs-permission-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.fs-permission-error svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #ef4444;
+}
+
+/* ── Instructions ────────────────────────────────────────────── */
+.fs-instructions {
+  font-size: 12.5px;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.fs-btn-group {
+  display: flex;
+  gap: 10px;
+}
+
+.fs-capture-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: opacity 0.18s, box-shadow 0.18s;
+}
+
+.fs-capture-btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+}
+
+.fs-capture-btn:active {
+  opacity: 0.85;
+}
+
+.fs-retake-btn {
+  flex: 1;
+  padding: 13px;
+  background: #ffffff;
+  color: #475569;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s;
+}
+
+.fs-retake-btn:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.fs-continue-btn {
+  flex: 1;
+  padding: 13px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: opacity 0.18s, box-shadow 0.18s;
+}
+
+.fs-continue-btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+}
+
+.fs-continue-btn:active {
+  opacity: 0.85;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.fs-back-note {
+  font-size: 13px;
+  text-align: center;
+}
+
+.fs-back-link {
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.fs-back-link:hover {
+  text-decoration: underline;
+}
