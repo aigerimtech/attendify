@@ -4,6 +4,7 @@ import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import FaceSetup from './pages/Auth/FaceSetup';
 import Dashboard from './pages/Student/Dashboard';
+import Profile from './pages/Student/Profile';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/face-setup" element={<FaceSetup />} />
           <Route path="/student/dashboard" element={<Dashboard />} />
+          <Route path="/student/profile" element={<Profile />} />
         </Routes>
       </div>
     </BrowserRouter>
