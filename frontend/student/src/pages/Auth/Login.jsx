@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { mockAccounts } from '../../data/mockData';
 import './Login.css';
-
-const MOCK_USERS = [
-  { email: 'student@test.com', password: '1234', role: 'student' },
-  { email: 'instructor@test.com', password: '1234', role: 'instructor' },
-];
 
 export default function Login() {
   const navigate = useNavigate();
@@ -45,7 +41,7 @@ export default function Login() {
     setError('');
     if (!validate()) return;
 
-    const match = MOCK_USERS.find(
+    const match = mockAccounts.find(
       (u) => u.email === identifier && u.password === password
     );
 
@@ -54,11 +50,8 @@ export default function Login() {
       return;
     }
 
-    if (match.role === 'instructor') {
-      navigate('/instructor/dashboard');
-    } else {
-      navigate('/student/dashboard');
-    }
+    localStorage.setItem('currentStudent', JSON.stringify(match));
+    navigate('/student/dashboard');
   }
 
   return (

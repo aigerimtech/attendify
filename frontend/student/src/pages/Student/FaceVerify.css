@@ -1,0 +1,249 @@
+/* ── Root ────────────────────────────────────────────────────── */
+.fv-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #eef4ff 0%, #f4f7ff 40%, #ffffff 100%);
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.fv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.fv-back-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 10px;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.fv-back-btn:hover {
+  background: #e2e8f0;
+}
+
+.fv-header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e3a5f;
+  letter-spacing: -0.2px;
+}
+
+.fv-cancel-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.fv-cancel-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Body ────────────────────────────────────────────────────── */
+.fv-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 24px 20px;
+}
+
+/* ── Camera outer container ──────────────────────────────────── */
+.fv-camera-outer {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+  flex-shrink: 0;
+}
+
+/* Spinning blue arc SVG */
+.fv-arc-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+  animation: fv-spin 1.8s linear infinite;
+}
+
+@keyframes fv-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Dark circular camera ring */
+.fv-camera-ring {
+  width: 212px;
+  height: 212px;
+  border-radius: 50%;
+  background: #0c1220;
+  border: 2px dashed rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.fv-webcam {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Camera-denied placeholder */
+.fv-cam-denied {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+}
+
+/* Small camera icon button at bottom center of circle */
+.fv-cam-btn {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 34px;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e3a5f;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+/* ── Title & subtitle ────────────────────────────────────────── */
+.fv-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e3a5f;
+  letter-spacing: -0.4px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.fv-subtitle {
+  font-size: 13.5px;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.55;
+  max-width: 270px;
+  margin-bottom: 24px;
+}
+
+/* ── Error banner ────────────────────────────────────────────── */
+.fv-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+/* ── Verifying status pill ───────────────────────────────────── */
+.fv-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 8px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #2563eb;
+  letter-spacing: 0.1px;
+}
+
+.fv-status-dot {
+  width: 8px;
+  height: 8px;
+  background: #2563eb;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: fv-dot-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes fv-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.75); }
+}
+
+/* ── DEV skip button ─────────────────────────────────────────── */
+.fv-skip-btn {
+  margin-top: 16px;
+  padding: 9px 22px;
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.fv-skip-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.fv-footer {
+  padding: 16px 24px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.fv-encrypted {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.fv-privacy-text {
+  font-size: 11.5px;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.55;
+  max-width: 280px;
+}

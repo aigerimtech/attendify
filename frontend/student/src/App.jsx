@@ -5,6 +5,9 @@ import ForgotPassword from './pages/Auth/ForgotPassword';
 import FaceSetup from './pages/Auth/FaceSetup';
 import Dashboard from './pages/Student/Dashboard';
 import Profile from './pages/Student/Profile';
+import QRScan from './pages/Student/QRScan';
+import FaceVerify from './pages/Student/FaceVerify';
+import Confirmation from './pages/Student/Confirmation';
 
 export default function App() {
   return (
@@ -18,6 +21,9 @@ export default function App() {
           <Route path="/face-setup" element={<FaceSetup />} />
           <Route path="/student/dashboard" element={<Dashboard />} />
           <Route path="/student/profile" element={<Profile />} />
+          <Route path="/student/scan" element={<QRScan />} />
+          <Route path="/student/verify" element={<FaceVerify />} />
+          <Route path="/student/confirmation" element={<Confirmation />} />
         </Routes>
       </div>
     </BrowserRouter>

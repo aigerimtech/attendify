@@ -1,5 +1,5 @@
+import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { mockStudent } from '../../data/mockData';
 import './Profile.css';
 
 const NAV_ITEMS = [
@@ -21,11 +21,20 @@ export default function Profile() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const initials = mockStudent.name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
+  const currentStudent = JSON.parse(localStorage.getItem('currentStudent'));
+
+  useEffect(() => {
+    if (!currentStudent) navigate('/login');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!currentStudent) return null;
+
+  const initials = currentStudent.name.split(' ').map((w) => w[0]).join('').toUpperCase();
+
+  function handleLogout() {
+    localStorage.removeItem('currentStudent');
+    navigate('/login');
+  }
 
   return (
     <div className="prof-root">
@@ -47,12 +56,12 @@ export default function Profile() {
         {/* ── Avatar block ── */}
         <div className="prof-avatar-block">
           <div className="prof-avatar">
-            {mockStudent.avatar
-              ? <img src={mockStudent.avatar} alt={mockStudent.name} />
+            {currentStudent.avatar
+              ? <img src={currentStudent.avatar} alt={currentStudent.name} />
               : <span>{initials}</span>}
           </div>
-          <h1 className="prof-name">{mockStudent.name}</h1>
-          <p className="prof-email">{mockStudent.email}</p>
+          <h1 className="prof-name">{currentStudent.name}</h1>
+          <p className="prof-email">{currentStudent.email}</p>
         </div>
 
         {/* ── Info card ── */}
@@ -65,7 +74,7 @@ export default function Profile() {
               </div>
               <div className="prof-row-body">
                 <p className="prof-row-label">{row.label}</p>
-                <p className="prof-row-value">{mockStudent[row.key]}</p>
+                <p className="prof-row-value">{currentStudent[row.key]}</p>
               </div>
             </div>
           ))}
@@ -83,7 +92,7 @@ export default function Profile() {
           <button
             type="button"
             className="prof-logout-btn"
-            onClick={() => navigate('/login')}
+            onClick={handleLogout}
           >
             <LogOutIcon />
             Log Out

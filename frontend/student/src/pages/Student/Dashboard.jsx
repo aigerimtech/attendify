@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { mockStudent, todaysClasses, recentActivity } from '../../data/mockData';
+import { mockCourses, mockRecentActivity } from '../../data/mockData';
 import './Dashboard.css';
 
 const NAV_ITEMS = [
@@ -17,11 +17,12 @@ export default function Dashboard() {
   const [popupOpen, setPopupOpen] = useState(false);
   const avatarRef = useRef(null);
 
-  const initials = mockStudent.name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
+  const currentStudent = JSON.parse(localStorage.getItem('currentStudent'));
+
+  // Auth guard — must be before any early return, after all hooks
+  useEffect(() => {
+    if (!currentStudent) navigate('/login');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close popup when clicking outside
   useEffect(() => {
@@ -34,6 +35,18 @@ export default function Dashboard() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [popupOpen]);
+
+  if (!currentStudent) return null;
+
+  const todaysClasses = currentStudent.courses.map((code) => mockCourses[code]).filter(Boolean);
+  const recentActivity = mockRecentActivity[currentStudent.studentId] ?? [];
+  const initials = currentStudent.name.split(' ').map((w) => w[0]).join('').toUpperCase();
+
+  function handleLogout() {
+    localStorage.removeItem('currentStudent');
+    setPopupOpen(false);
+    navigate('/login');
+  }
 
   return (
     <div className="dash-root">
@@ -57,16 +70,16 @@ export default function Dashboard() {
               aria-expanded={popupOpen}
               onClick={() => setPopupOpen((v) => !v)}
             >
-              {mockStudent.avatar
-                ? <img src={mockStudent.avatar} alt={mockStudent.name} />
+              {currentStudent.avatar
+                ? <img src={currentStudent.avatar} alt={currentStudent.name} />
                 : <span>{initials}</span>}
             </button>
 
             {popupOpen && (
               <div className="dash-avatar-popup" role="menu">
                 <div className="dash-popup-info">
-                  <p className="dash-popup-name">{mockStudent.name}</p>
-                  <p className="dash-popup-email">{mockStudent.email}</p>
+                  <p className="dash-popup-name">{currentStudent.name}</p>
+                  <p className="dash-popup-email">{currentStudent.email}</p>
                 </div>
                 <div className="dash-popup-divider" />
                 <button
@@ -82,7 +95,7 @@ export default function Dashboard() {
                   type="button"
                   className="dash-popup-item dash-popup-item-logout"
                   role="menuitem"
-                  onClick={() => { setPopupOpen(false); navigate('/login'); }}
+                  onClick={handleLogout}
                 >
                   <LogOutIcon />
                   Log Out
@@ -126,7 +139,7 @@ export default function Dashboard() {
         <div className="dash-next-card">
           <div className="dash-next-overlay">
             <span className="dash-next-label">
-              Next Class: {todaysClasses[0].name}
+              Next Class: {todaysClasses[0]?.name ?? 'No classes today'}
             </span>
           </div>
         </div>
@@ -156,9 +169,9 @@ export default function Dashboard() {
 
           <div className="dash-activity-list">
             {recentActivity.map((item) => (
-              <div key={item.id} className="dash-activity-card">
+              <div key={item.code} className="dash-activity-card">
                 <div className="dash-activity-icon">
-                  <SubjectIcon type={item.icon} />
+                  <BookIcon />
                 </div>
                 <div className="dash-activity-info">
                   <p className="dash-activity-name">{item.name}</p>
@@ -202,14 +215,6 @@ function NavIcon({ type }) {
   if (type === 'stats')    return <StatsIcon />;
   if (type === 'user')     return <UserIcon />;
   return null;
-}
-
-/* ── Subject icon switcher ───────────────────────────────────── */
-function SubjectIcon({ type }) {
-  if (type === 'science') return <ScienceIcon />;
-  if (type === 'code')    return <CodeIcon />;
-  if (type === 'math')    return <MathIcon />;
-  return <BookIcon />;
 }
 
 /* ── Inline SVG icons ────────────────────────────────────────── */
@@ -298,34 +303,6 @@ function QrIcon() {
       <rect x="14" y="14" width="3" height="3" />
       <line x1="19" y1="14" x2="19" y2="17" />
       <line x1="17" y1="19" x2="21" y2="19" />
-    </svg>
-  );
-}
-
-function ScienceIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 3h6v11l4 7H5l4-7V3z" />
-      <line x1="9" y1="9" x2="15" y2="9" />
-    </svg>
-  );
-}
-
-function CodeIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="16 18 22 12 16 6" />
-      <polyline points="8 6 2 12 8 18" />
-    </svg>
-  );
-}
-
-function MathIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="12" y1="4" x2="12" y2="20" />
-      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 }
