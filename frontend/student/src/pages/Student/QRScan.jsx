@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import { Html5Qrcode } from 'html5-qrcode';
+import { mockSession } from '../../data/mockData';
 import './QRScan.css';
 
 const TIMEOUT_MS = 30_000;
@@ -29,6 +30,7 @@ export default function QRScan() {
 
   const [status, setStatus] = useState('loading'); // loading|scanning|success|denied|timeout
   const [token, setToken] = useState('');
+  const [scanPos, setScanPos] = useState(0);
 
   // Init the decoder once (needs a real DOM node, even if off-screen)
   useEffect(() => {
@@ -39,13 +41,22 @@ export default function QRScan() {
     };
   }, []);
 
+  // Animate the scan line via state — 0% → 100%, reset on loop
+  useEffect(() => {
+    if (status !== 'scanning') { setScanPos(0); return; }
+    const id = setInterval(() => {
+      setScanPos(p => (p >= 100 ? 0 : p + 0.6));
+    }, 18);
+    return () => clearInterval(id);
+  }, [status]);
+
   const stopScanning = useCallback(() => {
     clearInterval(intervalRef.current);
     clearTimeout(timerRef.current);
   }, []);
 
   const startScanning = useCallback(() => {
-    if (resolvedRef.current) return; // simulateScan may have fired before camera was ready
+    if (resolvedRef.current) return;
     setStatus('scanning');
 
     // Hard 30-second cutoff
@@ -100,7 +111,13 @@ export default function QRScan() {
     setTimeout(() => navigate('/student/verify'), 1500);
   }, [navigate, stopScanning]);
 
+  const handleRetry = useCallback(() => {
+    resolvedRef.current = false;
+    setStatus('loading');
+  }, []);
+
   const scanning = status === 'scanning' || status === 'loading';
+  const failed   = status === 'denied'   || status === 'timeout';
 
   return (
     <div className="qrscan-root">
@@ -120,60 +137,121 @@ export default function QRScan() {
       </header>
 
       <div className="qrscan-body">
-        {/* ── Subtitle ── */}
-        <p className="qrscan-subtitle">
-          Point your camera at the QR code displayed on the projector screen
-        </p>
 
-        {/* ── Viewfinder ── */}
-        <div className="qrscan-viewfinder-wrap">
-          {/* Camera feed via react-webcam — full UI control, no library DOM interference */}
-          {status !== 'denied' && (
-            <Webcam
-              ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              screenshotQuality={0.85}
-              videoConstraints={{ facingMode: 'environment' }}
-              onUserMedia={handleUserMedia}
-              onUserMediaError={handleUserMediaError}
-              className="qrscan-webcam"
-              mirrored={false}
-            />
-          )}
+        {/* ══ SCANNING STATE ══ */}
+        {scanning && (
+          <>
+            <p className="qrscan-subtitle">
+              Point your camera at the QR code displayed on the projector screen
+            </p>
 
-          {/* Blue corner brackets + animated scan line */}
-          {scanning && (
-            <div className="qrscan-overlay" aria-hidden="true">
-              <span className="qrscan-corner qrscan-corner-tl" />
-              <span className="qrscan-corner qrscan-corner-tr" />
-              <span className="qrscan-corner qrscan-corner-bl" />
-              <span className="qrscan-corner qrscan-corner-br" />
-              {status === 'scanning' && <span className="qrscan-scan-line" />}
+            {/* Viewfinder: outer positions corners, inner clips webcam */}
+            <div className="qrscan-viewfinder-outer">
+              <div className="qrscan-viewfinder-inner">
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  screenshotQuality={0.85}
+                  videoConstraints={{ facingMode: 'environment' }}
+                  onUserMedia={handleUserMedia}
+                  onUserMediaError={handleUserMediaError}
+                  className="qrscan-webcam"
+                  mirrored={false}
+                />
+                {/* Subtle grid overlay */}
+                <div className="qrscan-grid" aria-hidden="true" />
+                {/* Scan line animated via state */}
+                {status === 'scanning' && (
+                  <div
+                    className="qrscan-scan-line"
+                    style={{ top: `${scanPos}%` }}
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+              {/* Corner brackets outside inner div so they aren't clipped */}
+              <span className="qrscan-corner qrscan-corner-tl" aria-hidden="true" />
+              <span className="qrscan-corner qrscan-corner-tr" aria-hidden="true" />
+              <span className="qrscan-corner qrscan-corner-bl" aria-hidden="true" />
+              <span className="qrscan-corner qrscan-corner-br" aria-hidden="true" />
             </div>
-          )}
 
-          {/* Success check overlay */}
-          {status === 'success' && (
-            <div className="qrscan-success-overlay" aria-hidden="true">
-              <SuccessCircleIcon />
+            {/* Pulsing indicator row */}
+            <div className="qrscan-searching">
+              <span className="qrscan-pulse-dot" aria-hidden="true" />
+              <span className="qrscan-hint">Searching for QR code...</span>
             </div>
-          )}
 
-          {/* Camera-denied placeholder keeps the square visible */}
-          {status === 'denied' && (
-            <div className="qrscan-denied-placeholder" aria-hidden="true">
-              <CameraOffIcon />
+            {/* Dev-only test trigger */}
+            {import.meta.env.DEV && (
+              <button type="button" className="qrscan-test-btn" onClick={simulateScan}>
+                <BeakerIcon />
+                Test Scan
+              </button>
+            )}
+          </>
+        )}
+
+        {/* ══ SUCCESS STATE ══ */}
+        {status === 'success' && (
+          <div className="qrscan-result">
+            <div className="qrscan-result-circle qrscan-result-circle-success">
+              <CheckLgIcon />
             </div>
-          )}
-        </div>
+            <h2 className="qrscan-result-title">QR Code Scanned</h2>
+            <p className="qrscan-result-sub">Session · {token}</p>
 
-        {/* ── Dev-only test button ── */}
-        {import.meta.env.DEV && status !== 'success' && (
-          <button type="button" className="qrscan-test-btn" onClick={simulateScan}>
-            <BeakerIcon />
-            Test Scan
-          </button>
+            <div className="qrscan-info-card">
+              <div className="qrscan-info-row">
+                <span className="qrscan-info-label">Course</span>
+                <span className="qrscan-info-value">{mockSession.courseName}</span>
+              </div>
+              <div className="qrscan-info-divider" />
+              <div className="qrscan-info-row">
+                <span className="qrscan-info-label">Location</span>
+                <span className="qrscan-info-value">{mockSession.location}</span>
+              </div>
+              <div className="qrscan-info-divider" />
+              <div className="qrscan-info-row">
+                <span className="qrscan-info-label">Time</span>
+                <span className="qrscan-info-value">{mockSession.time}</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="qrscan-continue-btn"
+              onClick={() => navigate('/student/verify')}
+            >
+              Continue to Face Verify
+            </button>
+          </div>
+        )}
+
+        {/* ══ FAILED STATE (denied | timeout) ══ */}
+        {failed && (
+          <div className="qrscan-result">
+            <div className="qrscan-result-circle qrscan-result-circle-fail">
+              <WarningLgIcon />
+            </div>
+            <h2 className="qrscan-result-title">QR Scan Failed</h2>
+
+            <div className="qrscan-fail-box">
+              <ul className="qrscan-fail-reasons">
+                <li>QR code may be too far or not clearly visible</li>
+                <li>Poor lighting conditions in the room</li>
+                <li>Camera access was denied or unavailable</li>
+              </ul>
+            </div>
+
+            <button type="button" className="qrscan-continue-btn">
+              Notify Instructor
+            </button>
+            <button type="button" className="qrscan-retry-btn" onClick={handleRetry}>
+              Try Again
+            </button>
+          </div>
         )}
 
         {/*
@@ -182,80 +260,38 @@ export default function QRScan() {
           when showImage=false.
         */}
         <div id="qr-decode-worker" className="qrscan-worker" aria-hidden="true" />
-
-        {/* ── Status banners ── */}
-        {status === 'success' && (
-          <div className="qrscan-banner qrscan-banner-success" role="status">
-            <CheckIcon />
-            <div>
-              <p className="qrscan-banner-title">QR Code Detected!</p>
-              <p className="qrscan-banner-token">{token}</p>
-            </div>
-          </div>
-        )}
-
-        {status === 'denied' && (
-          <div className="qrscan-banner qrscan-banner-error" role="alert">
-            <CameraOffIcon size={20} />
-            <p>Camera access denied. Please allow camera access in your browser settings.</p>
-          </div>
-        )}
-
-        {status === 'timeout' && (
-          <div className="qrscan-banner qrscan-banner-warning" role="alert">
-            <WarningIcon />
-            <p>No QR code found. Make sure the QR code is clearly visible.</p>
-          </div>
-        )}
-
-        {status === 'scanning' && (
-          <p className="qrscan-hint">Searching for QR code…</p>
-        )}
       </div>
     </div>
   );
 }
 
-/* ── SVG icons ─────────────────────────────────────────── */
+/* ── SVG icons ─────────────────────────────────────────────── */
 
 function BackArrowIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
     </svg>
   );
 }
 
-function CheckIcon() {
+function CheckLgIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-      style={{ flexShrink: 0 }}>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+      stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 }
 
-function SuccessCircleIcon() {
+function WarningLgIcon() {
   return (
-    <svg width="56" height="56" viewBox="0 0 24 24" fill="none"
-      stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="9 12 11 14 15 10" />
-    </svg>
-  );
-}
-
-function CameraOffIcon({ size = 32 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ flexShrink: 0 }}>
-      <line x1="1" y1="1" x2="23" y2="23" />
-      <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h2.5" />
-      <circle cx="12" cy="13" r="3" />
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+      stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   );
 }
@@ -266,18 +302,6 @@ function BeakerIcon() {
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 3h6v11l4 7H5l4-7V3z" />
       <line x1="9" y1="9" x2="15" y2="9" />
-    </svg>
-  );
-}
-
-function WarningIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ flexShrink: 0 }}>
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <line x1="12" y1="9" x2="12" y2="13" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   );
 }

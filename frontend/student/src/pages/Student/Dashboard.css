@@ -1,9 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
 /* ── Root ────────────────────────────────────────────────────── */
 .dash-root {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   background: #f1f5f9;
+  font-family: 'DM Sans', sans-serif;
 }
 
 /* ── Header ──────────────────────────────────────────────────── */
@@ -26,9 +29,9 @@
 }
 
 .dash-logo-icon {
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -38,15 +41,20 @@
 
 .dash-logo-text {
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 800;
   color: #1e3a5f;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
 }
 
 .dash-header-right {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* Bell with notification dot */
+.dash-bell-wrap {
+  position: relative;
 }
 
 .dash-icon-btn {
@@ -66,19 +74,33 @@
   color: #1e293b;
 }
 
+.dash-bell-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  pointer-events: none;
+}
+
 .dash-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   overflow: hidden;
   flex-shrink: 0;
+  border: none;
+  cursor: pointer;
 }
 
 .dash-avatar img {
@@ -99,7 +121,7 @@
   width: 210px;
   background: #ffffff;
   border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(30, 58, 95, 0.15);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.15);
   border: 1px solid #e2e8f0;
   overflow: hidden;
   z-index: 100;
@@ -124,7 +146,6 @@
 .dash-popup-divider {
   height: 1px;
   background: #f1f5f9;
-  margin: 0;
 }
 
 .dash-popup-item {
@@ -157,17 +178,42 @@
 
 /* ── Body ────────────────────────────────────────────────────── */
 .dash-body {
-  padding: 18px 16px 96px;
+  padding: 20px 20px 96px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-/* ── Subtitle ────────────────────────────────────────────────── */
-.dash-subtitle {
+/* ── Greeting ────────────────────────────────────────────────── */
+.dash-greeting {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-greeting-time {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.dash-greeting-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.4px;
+  margin: 0;
+}
+
+.dash-greeting-sub {
   font-size: 13.5px;
   color: #64748b;
-  font-weight: 400;
+  margin-top: 2px;
+}
+
+.dash-greeting-count {
+  color: #2563eb;
+  font-weight: 700;
 }
 
 /* ── Success banner ──────────────────────────────────────────── */
@@ -176,13 +222,13 @@
   align-items: flex-start;
   gap: 12px;
   background: #f0fdf4;
-  border: 1.5px solid #86efac;
+  border: 1.5px solid #bbf7d0;
   border-radius: 14px;
   padding: 13px 12px;
 }
 
 .dash-banner-icon {
-  color: #22c55e;
+  color: #16a34a;
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -210,84 +256,107 @@
   border: none;
   padding: 2px;
   cursor: pointer;
-  color: #22c55e;
+  color: #94a3b8;
   display: flex;
   align-items: center;
   flex-shrink: 0;
   border-radius: 5px;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .dash-banner-close:hover {
   background: #dcfce7;
+  color: #64748b;
 }
 
-/* ── Next class card ─────────────────────────────────────────── */
+/* ── Next class hero card ────────────────────────────────────── */
 .dash-next-card {
   width: 100%;
-  height: 160px;
-  border-radius: 16px;
-  background:
-    linear-gradient(135deg,
-      #0f4c75 0%,
-      #1b6ca8 30%,
-      #0d7377 60%,
-      #14a085 100%);
+  height: 150px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 50%, #0d9488 100%);
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.25);
   position: relative;
   overflow: hidden;
 }
 
-/* Geometric decoration */
-.dash-next-card::before {
-  content: '';
+/* Decorative circles */
+.dash-next-circle-1 {
   position: absolute;
   top: -30px;
-  right: -30px;
+  right: -20px;
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  pointer-events: none;
 }
 
-.dash-next-card::after {
-  content: '';
+.dash-next-circle-2 {
   position: absolute;
-  bottom: -20px;
-  left: 20px;
+  top: 40px;
+  right: 40px;
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
 }
 
-.dash-next-overlay {
+/* Hero card text content */
+.dash-next-content {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 10px 14px 13px;
-  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%);
-  border-radius: 0 0 16px 16px;
+  padding: 14px 18px 18px;
 }
 
-.dash-next-label {
-  font-size: 14px;
+.dash-next-tag {
+  font-size: 11px;
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.dash-next-name {
+  font-size: 18px;
+  font-weight: 800;
   color: #ffffff;
-  letter-spacing: 0.1px;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.dash-next-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.dash-next-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dash-next-meta-dot {
+  opacity: 0.5;
 }
 
 /* ── Mark attendance card ────────────────────────────────────── */
 .dash-attend-card {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 18px 16px;
-  box-shadow: 0 1px 8px rgba(30, 58, 95, 0.07);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
 }
 
 .dash-attend-title {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
   color: #1e293b;
   margin-bottom: 5px;
 }
@@ -305,22 +374,22 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px;
+  padding: 13px;
   background: linear-gradient(135deg, #2563eb, #3b82f6);
   color: #ffffff;
   border: none;
-  border-radius: 11px;
+  border-radius: 12px;
   font-size: 14.5px;
   font-weight: 600;
   cursor: pointer;
   letter-spacing: 0.2px;
-  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.32);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
   transition: opacity 0.18s, box-shadow 0.18s;
 }
 
 .dash-attend-btn:hover {
   opacity: 0.92;
-  box-shadow: 0 5px 16px rgba(37, 99, 235, 0.38);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
 }
 
 .dash-attend-btn:active {
@@ -342,7 +411,7 @@
 
 .dash-section-title {
   font-size: 15.5px;
-  font-weight: 700;
+  font-weight: 800;
   color: #1e293b;
 }
 
@@ -371,21 +440,21 @@
   align-items: center;
   gap: 12px;
   background: #ffffff;
-  border-radius: 13px;
-  padding: 13px 14px;
-  box-shadow: 0 1px 6px rgba(30, 58, 95, 0.06);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
 }
 
 .dash-activity-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  background: #eff6ff;
-  color: #2563eb;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .dash-activity-info {
@@ -395,7 +464,7 @@
 
 .dash-activity-name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #1e293b;
   margin-bottom: 2px;
   white-space: nowrap;
@@ -468,7 +537,7 @@
 
 .dash-badge-present {
   background: #dcfce7;
-  color: #15803d;
+  color: #16a34a;
 }
 
 .dash-badge-absent {

@@ -125,7 +125,7 @@ export default function Register() {
                 <input
                   id="fullName"
                   name="fullName"
-                  className={`reg-input${errors.fullName ? ' reg-input-error' : ''}`}
+                  className={`reg-input${errors.fullName ? ' reg-input-error' : form.fullName.trim() ? ' reg-input-valid' : ''}`}
                   type="text"
                   placeholder="Enter your full name"
                   value={form.fullName}
@@ -144,7 +144,7 @@ export default function Register() {
                 <input
                   id="email"
                   name="email"
-                  className={`reg-input${errors.email ? ' reg-input-error' : ''}`}
+                  className={`reg-input${errors.email ? ' reg-input-error' : form.email.trim() ? ' reg-input-valid' : ''}`}
                   type="email"
                   placeholder="Enter your email address"
                   value={form.email}
@@ -164,7 +164,7 @@ export default function Register() {
                   <input
                     id="department"
                     name="department"
-                    className={`reg-input${errors.department ? ' reg-input-error' : ''}`}
+                    className={`reg-input${errors.department ? ' reg-input-error' : form.department.trim() ? ' reg-input-valid' : ''}`}
                     type="text"
                     placeholder="Enter your department"
                     value={form.department}
@@ -184,7 +184,7 @@ export default function Register() {
                 <input
                   id="password"
                   name="password"
-                  className={`reg-input${errors.password ? ' reg-input-error' : ''}`}
+                  className={`reg-input${errors.password ? ' reg-input-error' : form.password ? ' reg-input-valid' : ''}`}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Create a password"
                   value={form.password}
@@ -211,7 +211,7 @@ export default function Register() {
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  className={`reg-input${errors.confirmPassword ? ' reg-input-error' : ''}`}
+                  className={`reg-input${errors.confirmPassword ? ' reg-input-error' : form.confirmPassword ? ' reg-input-valid' : ''}`}
                   type={showConfirm ? 'text' : 'password'}
                   placeholder="Repeat your password"
                   value={form.confirmPassword}

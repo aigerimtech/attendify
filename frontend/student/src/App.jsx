@@ -8,6 +8,8 @@ import Profile from './pages/Student/Profile';
 import QRScan from './pages/Student/QRScan';
 import FaceVerify from './pages/Student/FaceVerify';
 import Confirmation from './pages/Student/Confirmation';
+import Schedule from './pages/Student/Schedule';
+import Stats from './pages/Student/Stats';
 
 export default function App() {
   return (
@@ -24,6 +26,8 @@ export default function App() {
           <Route path="/student/scan" element={<QRScan />} />
           <Route path="/student/verify" element={<FaceVerify />} />
           <Route path="/student/confirmation" element={<Confirmation />} />
+          <Route path="/student/schedule" element={<Schedule />} />
+          <Route path="/student/stats" element={<Stats />} />
         </Routes>
       </div>
     </BrowserRouter>

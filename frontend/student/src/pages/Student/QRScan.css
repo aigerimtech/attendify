@@ -1,9 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
 /* ── Root ─────────────────────────────────────────────────── */
 .qrscan-root {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #f8fafc;
+  background: #f1f5f9;
+  font-family: 'DM Sans', sans-serif;
 }
 
 /* ── Header ───────────────────────────────────────────────── */
@@ -14,10 +17,9 @@
 .qrscan-header {
   display: flex;
   align-items: center;
-  gap: 0;
-  padding: 16px 20px;
+  padding: 14px 20px;
   background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
 }
 
@@ -29,7 +31,7 @@
   height: 36px;
   border: none;
   background: #f1f5f9;
-  border-radius: 50%;
+  border-radius: 10px;
   cursor: pointer;
   color: #374151;
   flex-shrink: 0;
@@ -43,7 +45,7 @@
   text-align: center;
   font-size: 17px;
   font-weight: 700;
-  color: #111827;
+  color: #1e293b;
   letter-spacing: -0.2px;
 }
 
@@ -66,22 +68,29 @@
 /* ── Subtitle ─────────────────────────────────────────────── */
 .qrscan-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: #475569;
   text-align: center;
-  line-height: 1.55;
+  line-height: 1.6;
   max-width: 280px;
 }
 
 /* ── Viewfinder ───────────────────────────────────────────── */
-.qrscan-viewfinder-wrap {
-  position: relative;   /* positioning context for overlay and webcam */
-  width: 260px;
-  height: 260px;
-  flex-shrink: 0;       /* never let the parent flex shrink this */
-  border-radius: 16px;
+/* Outer: positioning context for corner brackets */
+.qrscan-viewfinder-outer {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  flex-shrink: 0;
+}
+
+/* Inner: dark background, clips webcam and scan line */
+.qrscan-viewfinder-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  background: #0d1117;
   overflow: hidden;
-  background: #000;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
 }
 
 /* react-webcam renders a <video> — fill the square, crop to fit */
@@ -91,17 +100,33 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 0;
 }
 
-/* ── Overlay (corners + scan line) ───────────────────────── */
-.qrscan-overlay {
+/* Subtle grid overlay */
+.qrscan-grid {
   position: absolute;
   inset: 0;
+  opacity: 0.04;
+  background-image:
+    repeating-linear-gradient(0deg, #ffffff 0, #ffffff 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, #ffffff 0, #ffffff 1px, transparent 1px, transparent 28px);
+  background-size: 28px 28px;
   pointer-events: none;
 }
 
-/* Blue L-shaped corner brackets */
+/* Animated scan line — top driven by inline style via useState */
+.qrscan-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #2563eb, #60a5fa, #2563eb, transparent);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.8);
+  pointer-events: none;
+}
+
+/* ── Corner brackets ──────────────────────────────────────── */
+/* On the outer div so they render over the rounded inner div */
 .qrscan-corner {
   position: absolute;
   width: 28px;
@@ -110,76 +135,50 @@
   border-style: solid;
 }
 .qrscan-corner-tl {
-  top: 12px; left: 12px;
+  top: -2px; left: -2px;
   border-width: 3px 0 0 3px;
-  border-radius: 3px 0 0 0;
+  border-radius: 5px 0 0 0;
 }
 .qrscan-corner-tr {
-  top: 12px; right: 12px;
+  top: -2px; right: -2px;
   border-width: 3px 3px 0 0;
-  border-radius: 0 3px 0 0;
+  border-radius: 0 5px 0 0;
 }
 .qrscan-corner-bl {
-  bottom: 12px; left: 12px;
+  bottom: -2px; left: -2px;
   border-width: 0 0 3px 3px;
-  border-radius: 0 0 0 3px;
+  border-radius: 0 0 0 5px;
 }
 .qrscan-corner-br {
-  bottom: 12px; right: 12px;
+  bottom: -2px; right: -2px;
   border-width: 0 3px 3px 0;
-  border-radius: 0 0 3px 0;
+  border-radius: 0 0 5px 0;
 }
 
-/* Animated horizontal scan line */
-.qrscan-scan-line {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  height: 2px;
-  border-radius: 1px;
-  background: linear-gradient(
-    to right,
-    transparent 0%,
-    #3b82f6 20%,
-    #93c5fd 50%,
-    #3b82f6 80%,
-    transparent 100%
-  );
-  box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.4);
-  animation: qrscan-sweep 2s ease-in-out infinite;
-}
-
-@keyframes qrscan-sweep {
-  0%   { top: 12px;                  opacity: 0.7; }
-  10%  {                             opacity: 1;   }
-  90%  {                             opacity: 1;   }
-  100% { top: calc(100% - 14px);    opacity: 0.7; }
-}
-
-/* ── Success overlay ──────────────────────────────────────── */
-.qrscan-success-overlay {
-  position: absolute;
-  inset: 0;
+/* ── Searching row ────────────────────────────────────────── */
+.qrscan-searching {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-  animation: qrscan-fade-in 0.2s ease;
+  gap: 8px;
 }
 
-@keyframes qrscan-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+.qrscan-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  flex-shrink: 0;
+  animation: qrscan-pulse-dot 1.5s ease-in-out infinite;
 }
 
-/* ── Camera-denied placeholder ────────────────────────────── */
-.qrscan-denied-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9ca3af;
+@keyframes qrscan-pulse-dot {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%       { transform: scale(1.5); opacity: 0.6; }
+}
+
+.qrscan-hint {
+  font-size: 13px;
+  color: #64748b;
 }
 
 /* ── Dev-only test button ─────────────────────────────────── */
@@ -187,18 +186,18 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 9px 18px;
-  border: 1.5px dashed #6366f1;
-  border-radius: 10px;
+  padding: 9px 20px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 20px;
   background: transparent;
-  color: #6366f1;
+  color: #475569;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
-.qrscan-test-btn:hover  { background: #eef2ff; }
-.qrscan-test-btn:active { background: #e0e7ff; }
+.qrscan-test-btn:hover  { background: #f8fafc; border-color: #94a3b8; }
+.qrscan-test-btn:active { background: #f1f5f9; }
 
 /* ── Html5Qrcode worker element (off-screen, invisible) ───── */
 .qrscan-worker {
@@ -212,61 +211,153 @@
   pointer-events: none;
 }
 
-/* ── Status banners ───────────────────────────────────────── */
-.qrscan-banner {
-  width: 100%;
+/* ── Result screen (success & fail) ──────────────────────── */
+.qrscan-result {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.5;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
   animation: qrscan-slide-up 0.25s ease;
 }
 
 @keyframes qrscan-slide-up {
-  from { transform: translateY(8px); opacity: 0; }
-  to   { transform: translateY(0);   opacity: 1; }
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }
 
-.qrscan-banner-success {
+/* Status circle */
+.qrscan-result-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qrscan-result-circle-success {
   background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #15803d;
-}
-.qrscan-banner-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
-}
-.qrscan-banner-warning {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #92400e;
+  border: 3px solid #86efac;
 }
 
-.qrscan-banner-title {
-  font-weight: 700;
-  font-size: 15px;
-  margin-bottom: 2px;
-}
-.qrscan-banner-token {
-  font-family: monospace;
-  font-size: 12px;
-  word-break: break-all;
-  opacity: 0.8;
-  margin-top: 4px;
+.qrscan-result-circle-fail {
+  background: #fff5f5;
+  border: 3px solid #fca5a5;
 }
 
-/* ── Scanning hint ────────────────────────────────────────── */
-.qrscan-hint {
+.qrscan-result-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.qrscan-result-sub {
   font-size: 13px;
-  color: #9ca3af;
-  animation: qrscan-pulse 1.8s ease-in-out infinite;
+  color: #94a3b8;
+  margin-top: -8px;
 }
 
-@keyframes qrscan-pulse {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 1;   }
+/* ── Session info card (success) ──────────────────────────── */
+.qrscan-info-card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 4px 16px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.07);
 }
+
+.qrscan-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.qrscan-info-divider {
+  height: 1px;
+  background: #f1f5f9;
+}
+
+.qrscan-info-label {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.qrscan-info-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  text-align: right;
+  max-width: 60%;
+}
+
+/* ── Primary action button ────────────────────────────────── */
+.qrscan-continue-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.1px;
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.25);
+  transition: opacity 0.18s, box-shadow 0.18s;
+}
+.qrscan-continue-btn:hover  { opacity: 0.92; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.35); }
+.qrscan-continue-btn:active { opacity: 0.85; }
+
+/* ── Fail reason box (orange) ─────────────────────────────── */
+.qrscan-fail-box {
+  width: 100%;
+  background: #fff7ed;
+  border: 1.5px solid #fed7aa;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.qrscan-fail-reasons {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qrscan-fail-reasons li {
+  font-size: 13px;
+  color: #92400e;
+  line-height: 1.5;
+  padding-left: 16px;
+  position: relative;
+}
+
+.qrscan-fail-reasons li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #f97316;
+  font-weight: 700;
+}
+
+/* ── Outlined retry button ────────────────────────────────── */
+.qrscan-retry-btn {
+  width: 100%;
+  padding: 13px;
+  background: transparent;
+  color: #475569;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.qrscan-retry-btn:hover  { border-color: #94a3b8; color: #1e293b; }
+.qrscan-retry-btn:active { background: #f8fafc; }

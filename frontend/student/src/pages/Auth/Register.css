@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
 /* ── Root & background ───────────────────────────────────────── */
 .reg-root {
   position: relative;
@@ -5,21 +7,15 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #eef2fb;
 }
 
 .reg-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(160deg, #dbeafe 0%, #eff6ff 40%, #ffffff 100%);
-  z-index: 0;
+  display: none;
 }
 
 .reg-dots {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, #93c5fd 1px, transparent 1px);
-  background-size: 22px 22px;
-  opacity: 0.45;
+  display: none;
 }
 
 /* ── Content layer ───────────────────────────────────────────── */
@@ -43,9 +39,9 @@
 
 .reg-logo-icon {
   position: relative;
-  width: 72px;
-  height: 72px;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
   border-radius: 20px;
   display: flex;
   align-items: center;
@@ -63,7 +59,7 @@
   height: 22px;
   background: #22c55e;
   border-radius: 50%;
-  border: 2.5px solid #ffffff;
+  border: 3px solid #eef2fb;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,15 +68,15 @@
 
 .reg-app-name {
   font-size: 26px;
-  font-weight: 700;
+  font-weight: 800;
   color: #1e3a5f;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.5px;
   margin-bottom: 4px;
 }
 
 .reg-tagline {
   font-size: 13px;
-  color: #64748b;
+  color: #94a3b8;
   font-weight: 400;
 }
 
@@ -88,9 +84,9 @@
 .reg-card {
   width: 100%;
   background: #ffffff;
-  border-radius: 20px;
-  padding: 24px 20px 20px;
-  box-shadow: 0 4px 32px rgba(30, 58, 95, 0.10);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.12);
   margin-bottom: 20px;
 }
 
@@ -114,7 +110,7 @@
   border: none;
   border-radius: 9px;
   background: transparent;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
@@ -124,7 +120,8 @@
 .reg-toggle-btn.active {
   background: #ffffff;
   color: #2563eb;
-  box-shadow: 0 1px 6px rgba(30, 58, 95, 0.12);
+  font-weight: 700;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
 }
 
 /* ── Form fields ─────────────────────────────────────────────── */
@@ -157,10 +154,11 @@
 
 .reg-input {
   width: 100%;
-  padding: 11px 42px 11px 40px;
+  padding: 13px 42px 13px 42px;
   border: 1.5px solid #e2e8f0;
-  border-radius: 11px;
+  border-radius: 12px;
   font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
   color: #1e293b;
   background: #f8fafc;
   outline: none;
@@ -194,19 +192,30 @@
   color: #475569;
 }
 
+/* Error state */
 .reg-input-error {
-  border-color: #ef4444;
+  border-color: #dc2626;
   background: #fff5f5;
 }
 
 .reg-input-error:focus {
-  border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+/* Valid state */
+.reg-input-valid {
+  border-color: #16a34a;
+}
+
+.reg-input-valid:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
 }
 
 .reg-field-error {
   font-size: 12px;
-  color: #ef4444;
+  color: #dc2626;
   margin-top: 5px;
 }
 

@@ -58,6 +58,25 @@ export const mockRecentActivity = {
   ]
 }
 
+// Per-course attendance stats, used by Stats page
+export const mockCourseAttendance = {
+  "STU-2024-001": {
+    CS101:   { present: 14, absent: 2, total: 16 },
+    MATH201: { present: 10, absent: 4, total: 14 },
+    PHYS101: { present: 8,  absent: 8, total: 16 },
+  },
+  "STU-2024-002": {
+    IS101:   { present: 12, absent: 2, total: 14 },
+    MATH201: { present: 9,  absent: 5, total: 14 },
+    CS202:   { present: 13, absent: 2, total: 15 },
+  },
+  "STU-2024-003": {
+    CS101:   { present: 15, absent: 1, total: 16 },
+    CS202:   { present: 12, absent: 3, total: 15 },
+    SE301:   { present: 10, absent: 4, total: 14 },
+  },
+}
+
 // Used by Confirmation page
 export const mockSession = {
   courseCode: "CS101",

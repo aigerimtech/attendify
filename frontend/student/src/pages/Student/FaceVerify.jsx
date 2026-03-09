@@ -9,21 +9,23 @@ const WEBCAM_CONSTRAINTS = {
   facingMode: 'user',
 };
 
-// Arc geometry: container 260px, circle r=126
-// Circumference ≈ 791.7 → 270° dash ≈ 594, gap ≈ 198
-const ARC_DASHARRAY = '594 198';
-
 export default function FaceVerify() {
   const navigate = useNavigate();
   const webcamRef = useRef(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [phase, setPhase] = useState('verifying'); // 'verifying' | 'success'
 
-  // Auto-capture and navigate after 3 s (skipped if camera was denied)
+  // Visual success state at 3.5 s; existing navigate at 5 s is untouched
   useEffect(() => {
     if (permissionDenied) return;
-    const id = setTimeout(() => navigate('/student/confirmation'), 5000);
-    return () => clearTimeout(id);
+    const successTimer = setTimeout(() => setPhase('success'), 3500);
+    const navTimer    = setTimeout(() => navigate('/student/confirmation'), 5000);
+    return () => { clearTimeout(successTimer); clearTimeout(navTimer); };
   }, [navigate, permissionDenied]);
+
+  const verifying = phase === 'verifying' && !permissionDenied;
+  const success   = phase === 'success'   && !permissionDenied;
+  const failed    = permissionDenied;
 
   return (
     <div className="fv-root">
@@ -43,29 +45,12 @@ export default function FaceVerify() {
 
       {/* ── Body ── */}
       <div className="fv-body">
-        {/* Camera outer — holds arc SVG + ring + cam button */}
+        {/* Camera outer — holds ring + arc SVG + cam pill */}
         <div className="fv-camera-outer" aria-label="Camera viewfinder">
-          {/* Spinning blue arc */}
-          <svg
-            className="fv-arc-svg"
-            viewBox="0 0 260 260"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle
-              cx="130"
-              cy="130"
-              r="126"
-              stroke="#3b82f6"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray={ARC_DASHARRAY}
-            />
-          </svg>
 
-          {/* Dark circular camera ring with dashed inner border */}
-          <div className="fv-camera-ring">
-            {permissionDenied ? (
+          {/* Camera ring (clipping context for webcam + overlays) */}
+          <div className={`fv-camera-ring${success ? ' fv-ring-success' : failed ? ' fv-ring-failed' : ''}`}>
+            {failed ? (
               <div className="fv-cam-denied">
                 <CameraOffIcon />
               </div>
@@ -80,37 +65,133 @@ export default function FaceVerify() {
                 mirrored
               />
             )}
+
+            {/* Face guide dots — verifying only */}
+            {verifying && (
+              <div className="fv-face-dots" aria-hidden="true">
+                <span className="fv-dot fv-dot-1" />
+                <span className="fv-dot fv-dot-2" />
+                <span className="fv-dot fv-dot-3" />
+                <span className="fv-dot fv-dot-4" />
+                <span className="fv-dot fv-dot-5" />
+              </div>
+            )}
+
+            {/* Success overlay */}
+            {success && (
+              <div className="fv-overlay fv-overlay-success" aria-hidden="true">
+                <div className="fv-overlay-badge fv-overlay-badge-success">
+                  <CheckLgIcon />
+                </div>
+              </div>
+            )}
+
+            {/* Failed overlay */}
+            {failed && (
+              <div className="fv-overlay fv-overlay-failed" aria-hidden="true">
+                <div className="fv-overlay-badge fv-overlay-badge-failed">
+                  <XLgIcon />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Small camera icon button at bottom center */}
-          <div className="fv-cam-btn" aria-hidden="true">
-            <SmallCameraIcon />
-          </div>
+          {/* Arc SVG — rendered after ring so it draws over the border */}
+          <svg
+            className={`fv-arc-svg${verifying ? ' fv-arc-spin' : ''}`}
+            width="240"
+            height="240"
+            viewBox="0 0 240 240"
+            fill="none"
+            aria-hidden="true"
+          >
+            {/* Static background circle */}
+            <circle cx="120" cy="120" r="112" stroke="#bfdbfe" strokeWidth="3" fill="none" />
+
+            {/* Verifying: animated dash arc */}
+            {verifying && (
+              <circle
+                cx="120" cy="120" r="112"
+                stroke="#2563eb"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray="80 480"
+                fill="none"
+              />
+            )}
+
+            {/* Success: full green circle */}
+            {success && (
+              <circle cx="120" cy="120" r="112" stroke="#86efac" strokeWidth="3" fill="none" />
+            )}
+
+            {/* Failed: full red circle */}
+            {failed && (
+              <circle cx="120" cy="120" r="112" stroke="#fca5a5" strokeWidth="3" fill="none" />
+            )}
+          </svg>
+
+          {/* Camera icon pill — verifying only */}
+          {verifying && (
+            <div className="fv-cam-btn" aria-hidden="true">
+              <SmallCameraIcon />
+            </div>
+          )}
         </div>
 
-        <h2 className="fv-title">Face Verification</h2>
+        {/* ── Text ── */}
+        <h2 className="fv-title">
+          {success ? 'Identity Confirmed' : failed ? 'Verification Failed' : 'Face Verification'}
+        </h2>
         <p className="fv-subtitle">
-          Please hold your phone steady and look directly at the screen.
+          {success
+            ? 'Your identity has been verified. Attendance is being recorded.'
+            : failed
+            ? 'Camera access denied. Please allow camera access in your browser settings.'
+            : 'Please hold your phone steady and look directly at the screen.'}
         </p>
 
-        {/* Permission denied error */}
-        {permissionDenied && (
-          <div className="fv-error-banner" role="alert">
-            <AlertIcon />
-            Camera access denied. Please allow camera access in your browser settings.
-          </div>
-        )}
-
-        {/* Verifying status pill */}
-        {!permissionDenied && (
+        {/* ── Verifying status pill ── */}
+        {verifying && (
           <div className="fv-status-pill" role="status" aria-live="polite">
             <span className="fv-status-dot" aria-hidden="true" />
             Verifying...
           </div>
         )}
 
+        {/* ── Success button ── */}
+        {success && (
+          <button
+            type="button"
+            className="fv-continue-btn"
+            onClick={() => navigate('/student/confirmation')}
+          >
+            Continue
+          </button>
+        )}
+
+        {/* ── Failed buttons ── */}
+        {failed && (
+          <div className="fv-btn-group">
+            <button
+              type="button"
+              className="fv-continue-btn"
+              onClick={() => navigate('/student/dashboard')}
+            >
+              Notify Instructor
+            </button>
+            <button
+              type="button"
+              className="fv-retry-btn"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
         {/* DEV-only skip button */}
-        {import.meta.env.DEV && (
+        {import.meta.env.DEV && verifying && (
           <button
             type="button"
             className="fv-skip-btn"
@@ -139,7 +220,7 @@ export default function FaceVerify() {
 
 function BackArrowIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
     </svg>
@@ -149,9 +230,28 @@ function BackArrowIcon() {
 function SmallCameraIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
       <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+function CheckLgIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+      stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function XLgIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+      stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 }
@@ -173,18 +273,6 @@ function CameraOffIcon() {
       <line x1="1" y1="1" x2="23" y2="23" />
       <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h2.5" />
       <circle cx="12" cy="13" r="3" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ flexShrink: 0, marginTop: 1 }}>
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   );
 }

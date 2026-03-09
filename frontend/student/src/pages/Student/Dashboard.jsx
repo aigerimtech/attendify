@@ -3,6 +3,15 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { mockCourses, mockRecentActivity } from '../../data/mockData';
 import './Dashboard.css';
 
+const COURSE_COLORS = {
+  CS101:   '#2563eb',
+  CS202:   '#7c3aed',
+  MATH201: '#0891b2',
+  PHYS101: '#0d9488',
+  IS101:   '#059669',
+  SE301:   '#d97706',
+};
+
 const NAV_ITEMS = [
   { label: 'Home',     path: '/student/dashboard', icon: 'home'     },
   { label: 'Schedule', path: '/student/schedule',  icon: 'calendar' },
@@ -59,9 +68,12 @@ export default function Dashboard() {
           <span className="dash-logo-text">Attendify</span>
         </div>
         <div className="dash-header-right">
-          <button type="button" className="dash-icon-btn" aria-label="Notifications">
-            <BellIcon />
-          </button>
+          <div className="dash-bell-wrap">
+            <button type="button" className="dash-icon-btn" aria-label="Notifications">
+              <BellIcon />
+            </button>
+            <span className="dash-bell-dot" aria-hidden="true" />
+          </div>
           <div className="dash-avatar-wrap" ref={avatarRef}>
             <button
               type="button"
@@ -107,10 +119,16 @@ export default function Dashboard() {
       </header>
 
       <div className="dash-body">
-        {/* ── Subtitle ── */}
-        <p className="dash-subtitle">
-          You have {todaysClasses.length} classes scheduled for today.
-        </p>
+        {/* ── Greeting ── */}
+        <div className="dash-greeting">
+          <p className="dash-greeting-time">Good morning</p>
+          <h2 className="dash-greeting-name">{currentStudent.name}</h2>
+          <p className="dash-greeting-sub">
+            You have{' '}
+            <span className="dash-greeting-count">{todaysClasses.length}</span>{' '}
+            classes scheduled for today.
+          </p>
+        </div>
 
         {/* ── Success banner ── */}
         {bannerVisible && (
@@ -137,10 +155,26 @@ export default function Dashboard() {
 
         {/* ── Next class card ── */}
         <div className="dash-next-card">
-          <div className="dash-next-overlay">
-            <span className="dash-next-label">
-              Next Class: {todaysClasses[0]?.name ?? 'No classes today'}
-            </span>
+          <div className="dash-next-circle-1" aria-hidden="true" />
+          <div className="dash-next-circle-2" aria-hidden="true" />
+          <div className="dash-next-content">
+            <p className="dash-next-tag">NEXT CLASS</p>
+            <p className="dash-next-name">
+              {todaysClasses[0]?.name ?? 'No classes today'}
+            </p>
+            {todaysClasses[0] && (
+              <div className="dash-next-meta">
+                <span className="dash-next-meta-item">
+                  <ClockIcon />
+                  {todaysClasses[0].time}
+                </span>
+                <span className="dash-next-meta-dot">·</span>
+                <span className="dash-next-meta-item">
+                  <PinIcon />
+                  {todaysClasses[0].room}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -168,20 +202,26 @@ export default function Dashboard() {
           </div>
 
           <div className="dash-activity-list">
-            {recentActivity.map((item) => (
-              <div key={item.code} className="dash-activity-card">
-                <div className="dash-activity-icon">
-                  <BookIcon />
+            {recentActivity.map((item) => {
+              const color = COURSE_COLORS[item.code] ?? '#2563eb';
+              return (
+                <div key={item.code} className="dash-activity-card">
+                  <div
+                    className="dash-activity-icon"
+                    style={{ background: color + '26', color }}
+                  >
+                    {item.code[0]}
+                  </div>
+                  <div className="dash-activity-info">
+                    <p className="dash-activity-name">{item.name}</p>
+                    <p className="dash-activity-date">{item.date}</p>
+                  </div>
+                  <span className={`dash-badge${item.status === 'Present' ? ' dash-badge-present' : ' dash-badge-absent'}`}>
+                    {item.status}
+                  </span>
                 </div>
-                <div className="dash-activity-info">
-                  <p className="dash-activity-name">{item.name}</p>
-                  <p className="dash-activity-date">{item.date}</p>
-                </div>
-                <span className={`dash-badge${item.status === 'Present' ? ' dash-badge-present' : ' dash-badge-absent'}`}>
-                  {item.status}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -307,11 +347,20 @@ function QrIcon() {
   );
 }
 
-function BookIcon() {
+function ClockIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
     </svg>
   );
 }

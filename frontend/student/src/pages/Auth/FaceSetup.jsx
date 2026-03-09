@@ -42,7 +42,7 @@ export default function FaceSetup() {
         {/* Logo */}
         <div className="fs-logo-wrap">
           <div className="fs-logo-icon">
-            <CalendarIcon />
+            <LogoCameraIcon />
             <span className="fs-logo-badge">
               <CheckIcon />
             </span>
@@ -87,20 +87,30 @@ export default function FaceSetup() {
           {/* Camera circle */}
           {!permissionDenied && (
             <div className="fs-camera-wrap">
-              <div className={`fs-camera-ring${photo ? ' fs-camera-ring-captured' : ''}`}>
-                {photo ? (
-                  <img src={photo} alt="Captured face" className="fs-camera-preview" />
-                ) : (
-                  <Webcam
-                    ref={webcamRef}
-                    audio={false}
-                    screenshotFormat="image/jpeg"
-                    videoConstraints={WEBCAM_CONSTRAINTS}
-                    className="fs-webcam"
-                    onUserMediaError={handleCameraError}
-                    mirrored
-                  />
-                )}
+              <div className="fs-camera-outer">
+                <div className={`fs-camera-glow${photo ? ' fs-camera-glow-captured' : ''}`} />
+                <div className={`fs-camera-ring${photo ? ' fs-camera-ring-captured' : ''}`}>
+                  {photo ? (
+                    <>
+                      <img src={photo} alt="Captured face" className="fs-camera-preview" />
+                      <div className="fs-capture-overlay">
+                        <div className="fs-capture-badge">
+                          <CheckIconLg />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <Webcam
+                      ref={webcamRef}
+                      audio={false}
+                      screenshotFormat="image/jpeg"
+                      videoConstraints={WEBCAM_CONSTRAINTS}
+                      className="fs-webcam"
+                      onUserMediaError={handleCameraError}
+                      mirrored
+                    />
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -153,13 +163,19 @@ export default function FaceSetup() {
 
 /* ── Inline SVG icons ────────────────────────────────────────── */
 
-function CalendarIcon() {
+function LogoCameraIcon() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+function CheckIconLg() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 }

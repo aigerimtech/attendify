@@ -1,9 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
 /* ── Root ────────────────────────────────────────────────────── */
 .fv-root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #eef4ff 0%, #f4f7ff 40%, #ffffff 100%);
+  background: #f8fafc;
+  font-family: 'DM Sans', sans-serif;
 }
 
 /* ── Header ──────────────────────────────────────────────────── */
@@ -13,7 +16,8 @@
   justify-content: space-between;
   padding: 14px 20px;
   background: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .fv-back-btn {
@@ -31,28 +35,24 @@
   flex-shrink: 0;
 }
 
-.fv-back-btn:hover {
-  background: #e2e8f0;
-}
+.fv-back-btn:hover { background: #e2e8f0; }
 
 .fv-header-title {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
-  color: #1e3a5f;
+  color: #1e293b;
   letter-spacing: -0.2px;
 }
 
 .fv-cancel-link {
   font-size: 14px;
-  font-weight: 600;
-  color: #2563eb;
+  font-weight: 500;
+  color: #475569;
   text-decoration: none;
   flex-shrink: 0;
 }
 
-.fv-cancel-link:hover {
-  text-decoration: underline;
-}
+.fv-cancel-link:hover { color: #1e293b; }
 
 /* ── Body ────────────────────────────────────────────────────── */
 .fv-body {
@@ -60,14 +60,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 36px 24px 20px;
+  padding: 32px 28px 24px;
+  gap: 0;
 }
 
 /* ── Camera outer container ──────────────────────────────────── */
 .fv-camera-outer {
   position: relative;
-  width: 260px;
-  height: 260px;
+  width: 240px;
+  height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,31 +76,22 @@
   flex-shrink: 0;
 }
 
-/* Spinning blue arc SVG */
-.fv-arc-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transform-origin: center;
-  animation: fv-spin 1.8s linear infinite;
-}
-
-@keyframes fv-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Dark circular camera ring */
+/* ── Camera ring ─────────────────────────────────────────────── */
 .fv-camera-ring {
-  width: 212px;
-  height: 212px;
+  position: relative;
+  width: 240px;
+  height: 240px;
   border-radius: 50%;
-  background: #0c1220;
-  border: 2px dashed rgba(255, 255, 255, 0.22);
+  background: #0d1117;
+  border: 4px solid #2563eb;
   overflow: hidden;
   flex-shrink: 0;
   z-index: 1;
+  transition: border-color 0.4s ease;
 }
+
+.fv-ring-success { border-color: #16a34a; }
+.fv-ring-failed  { border-color: #dc2626; }
 
 .fv-webcam {
   width: 100%;
@@ -118,22 +110,113 @@
   color: #ef4444;
 }
 
-/* Small camera icon button at bottom center of circle */
+/* ── Face guide dots ─────────────────────────────────────────── */
+.fv-face-dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fv-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3b82f6;
+  opacity: 0.7;
+  animation: fv-dot-pulse 1.4s ease-in-out infinite;
+}
+
+/* Left eye */
+.fv-dot-1 { top: 30%; left: 25%; animation-delay: 0s; }
+/* Right eye */
+.fv-dot-2 { top: 30%; right: 25%; animation-delay: 0.2s; }
+/* Nose */
+.fv-dot-3 { top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: 0.4s; }
+/* Mouth left */
+.fv-dot-4 { top: 65%; left: 35%; animation-delay: 0.1s; }
+/* Mouth right */
+.fv-dot-5 { top: 65%; right: 35%; animation-delay: 0.3s; }
+
+@keyframes fv-dot-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.7; }
+  50%       { transform: scale(1.8); opacity: 1;   }
+}
+/* Override transform for the centered nose dot */
+.fv-dot-3 {
+  animation-name: fv-dot-pulse-center;
+}
+@keyframes fv-dot-pulse-center {
+  0%, 100% { transform: translate(-50%, -50%) scale(1);   opacity: 0.7; }
+  50%       { transform: translate(-50%, -50%) scale(1.8); opacity: 1;   }
+}
+
+/* ── State overlays ──────────────────────────────────────────── */
+.fv-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.fv-overlay-success { background: rgba(22, 163, 74, 0.2); }
+.fv-overlay-failed  { background: rgba(220, 38, 38, 0.2); }
+
+.fv-overlay-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fv-badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes fv-badge-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.fv-overlay-badge-success { background: #16a34a; }
+.fv-overlay-badge-failed  { background: #dc2626; }
+
+/* ── Arc SVG — positioned over the ring ─────────────────────── */
+.fv-arc-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 240px;
+  height: 240px;
+  z-index: 2;          /* draws over the ring's border */
+  transform-origin: 120px 120px;
+  pointer-events: none;
+}
+
+.fv-arc-spin {
+  animation: fv-spin 1.8s linear infinite;
+}
+
+@keyframes fv-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Camera icon pill (bottom center) ───────────────────────── */
 .fv-cam-btn {
   position: absolute;
-  bottom: 10px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   background: #ffffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1e3a5f;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
-  z-index: 2;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  z-index: 3;
   flex-shrink: 0;
 }
 
@@ -141,36 +224,19 @@
 .fv-title {
   font-size: 22px;
   font-weight: 800;
-  color: #1e3a5f;
+  color: #1e293b;
   letter-spacing: -0.4px;
   text-align: center;
   margin-bottom: 10px;
 }
 
 .fv-subtitle {
-  font-size: 13.5px;
-  color: #64748b;
+  font-size: 14px;
+  color: #475569;
   text-align: center;
-  line-height: 1.55;
+  line-height: 1.6;
   max-width: 270px;
   margin-bottom: 24px;
-}
-
-/* ── Error banner ────────────────────────────────────────────── */
-.fv-error-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background: #fef2f2;
-  border: 1.5px solid #fecaca;
-  border-radius: 10px;
-  padding: 12px 14px;
-  font-size: 13px;
-  color: #dc2626;
-  font-weight: 500;
-  line-height: 1.5;
-  margin-bottom: 16px;
-  width: 100%;
 }
 
 /* ── Verifying status pill ───────────────────────────────────── */
@@ -186,6 +252,7 @@
   font-weight: 600;
   color: #2563eb;
   letter-spacing: 0.1px;
+  margin-bottom: 16px;
 }
 
 .fv-status-dot {
@@ -194,17 +261,60 @@
   background: #2563eb;
   border-radius: 50%;
   flex-shrink: 0;
-  animation: fv-dot-pulse 1.2s ease-in-out infinite;
+  animation: fv-status-pulse 1.2s ease-in-out infinite;
 }
 
-@keyframes fv-dot-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
+@keyframes fv-status-pulse {
+  0%, 100% { opacity: 1;    transform: scale(1);    }
   50%       { opacity: 0.35; transform: scale(0.75); }
 }
 
+/* ── Primary button (success / notify) ──────────────────────── */
+.fv-continue-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.1px;
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.25);
+  transition: opacity 0.18s, box-shadow 0.18s;
+  margin-bottom: 10px;
+}
+.fv-continue-btn:hover  { opacity: 0.92; }
+.fv-continue-btn:active { opacity: 0.85; }
+
+/* ── Button group (failed state) ────────────────────────────── */
+.fv-btn-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Outlined retry button ───────────────────────────────────── */
+.fv-retry-btn {
+  width: 100%;
+  padding: 13px;
+  background: transparent;
+  color: #475569;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fv-retry-btn:hover  { border-color: #94a3b8; color: #1e293b; }
+.fv-retry-btn:active { background: #f8fafc; }
+
 /* ── DEV skip button ─────────────────────────────────────────── */
 .fv-skip-btn {
-  margin-top: 16px;
+  margin-top: 8px;
   padding: 9px 22px;
   background: #f1f5f9;
   border: 1.5px solid #cbd5e1;
@@ -215,11 +325,7 @@
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-
-.fv-skip-btn:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-}
+.fv-skip-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
 
 /* ── Footer ──────────────────────────────────────────────────── */
 .fv-footer {
