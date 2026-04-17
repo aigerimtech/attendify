@@ -1,0 +1,284 @@
+/* ── Root ────────────────────────────────────────────────────── */
+.cf-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #eef4ff 0%, #f5f8ff 40%, #ffffff 100%);
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.cf-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.cf-close-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  color: #374151;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.cf-close-btn:hover  { background: #e2e8f0; }
+.cf-close-btn:active { background: #cbd5e1; }
+
+.cf-header-title {
+  flex: 1;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.2px;
+}
+
+/* Mirrors close-btn width so title is truly centred */
+.cf-header-spacer {
+  width: 36px;
+  flex-shrink: 0;
+}
+
+/* ── Body ────────────────────────────────────────────────────── */
+.cf-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 20px 24px;
+}
+
+/* ── Success circle ──────────────────────────────────────────── */
+.cf-check-circle {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+/* ── Title & subtitle ────────────────────────────────────────── */
+.cf-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e3a5f;
+  letter-spacing: -0.4px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.cf-subtitle {
+  font-size: 13.5px;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.55;
+  max-width: 270px;
+  margin-bottom: 24px;
+}
+
+/* ── Session details card ────────────────────────────────────── */
+.cf-card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 16px;
+  border-top: 3px solid #2563eb;
+  box-shadow: 0 4px 20px rgba(30, 58, 95, 0.09);
+  padding: 18px 18px 20px;
+  margin-bottom: 16px;
+}
+
+.cf-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cf-session-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #2563eb;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+}
+
+.cf-course-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: #1e3a5f;
+  letter-spacing: -0.3px;
+  margin-bottom: 5px;
+}
+
+.cf-instructor {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 400;
+  margin-bottom: 0;
+}
+
+/* Divider */
+.cf-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 14px 0;
+}
+
+/* Date & Time two-column row */
+.cf-datetime-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.cf-datetime-item {
+  flex: 1;
+}
+
+.cf-datetime-sep {
+  width: 1px;
+  background: #f1f5f9;
+  align-self: stretch;
+  margin: 0 14px;
+}
+
+.cf-datetime-label-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #94a3b8;
+  margin-bottom: 5px;
+}
+
+.cf-datetime-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.cf-datetime-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e3a5f;
+}
+
+/* Status row */
+.cf-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cf-status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cf-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.cf-status-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cf-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803d;
+  letter-spacing: 0.6px;
+}
+
+/* ── Location section ────────────────────────────────────────── */
+.cf-location {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.cf-location-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.cf-location-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3a5f;
+}
+
+
+/* ── Map status placeholder ──────────────────────────────────── */
+.cf-map-status {
+  width: 100%;
+  height: 150px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.cf-map-status-error {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+/* ── Done button ─────────────────────────────────────────────── */
+.cf-done-wrap {
+  padding: 16px 20px 36px;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.cf-done-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+  transition: opacity 0.18s, box-shadow 0.18s;
+}
+
+.cf-done-btn:hover  { opacity: 0.93; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
+.cf-done-btn:active { opacity: 0.86; }

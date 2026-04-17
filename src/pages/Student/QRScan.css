@@ -1,0 +1,363 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ── Root ─────────────────────────────────────────────────── */
+.qrscan-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f1f5f9;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+/*
+  No position:sticky here — the phone-frame parent has overflow:hidden
+  which would silently break sticky. We use a plain block header instead.
+*/
+.qrscan-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.qrscan-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #374151;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.qrscan-back:hover  { background: #e2e8f0; }
+.qrscan-back:active { background: #cbd5e1; }
+
+.qrscan-title {
+  flex: 1;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.2px;
+}
+
+/* Matches back button width so the title stays centred */
+.qrscan-header-spacer {
+  width: 36px;
+  flex-shrink: 0;
+}
+
+/* ── Body ─────────────────────────────────────────────────── */
+.qrscan-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 24px 40px;
+  gap: 24px;
+}
+
+/* ── Subtitle ─────────────────────────────────────────────── */
+.qrscan-subtitle {
+  font-size: 14px;
+  color: #475569;
+  text-align: center;
+  line-height: 1.6;
+  max-width: 280px;
+}
+
+/* ── Viewfinder ───────────────────────────────────────────── */
+/* Outer: positioning context for corner brackets */
+.qrscan-viewfinder-outer {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  flex-shrink: 0;
+}
+
+/* Inner: dark background, clips webcam and scan line */
+.qrscan-viewfinder-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  background: #0d1117;
+  overflow: hidden;
+}
+
+/* react-webcam renders a <video> — fill the square, crop to fit */
+.qrscan-webcam {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Subtle grid overlay */
+.qrscan-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image:
+    repeating-linear-gradient(0deg, #ffffff 0, #ffffff 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, #ffffff 0, #ffffff 1px, transparent 1px, transparent 28px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+/* Animated scan line — top driven by inline style via useState */
+.qrscan-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #2563eb, #60a5fa, #2563eb, transparent);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.8);
+  pointer-events: none;
+}
+
+/* ── Corner brackets ──────────────────────────────────────── */
+/* On the outer div so they render over the rounded inner div */
+.qrscan-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: #3b82f6;
+  border-style: solid;
+}
+.qrscan-corner-tl {
+  top: -2px; left: -2px;
+  border-width: 3px 0 0 3px;
+  border-radius: 5px 0 0 0;
+}
+.qrscan-corner-tr {
+  top: -2px; right: -2px;
+  border-width: 3px 3px 0 0;
+  border-radius: 0 5px 0 0;
+}
+.qrscan-corner-bl {
+  bottom: -2px; left: -2px;
+  border-width: 0 0 3px 3px;
+  border-radius: 0 0 0 5px;
+}
+.qrscan-corner-br {
+  bottom: -2px; right: -2px;
+  border-width: 0 3px 3px 0;
+  border-radius: 0 0 5px 0;
+}
+
+/* ── Searching row ────────────────────────────────────────── */
+.qrscan-searching {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qrscan-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  flex-shrink: 0;
+  animation: qrscan-pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes qrscan-pulse-dot {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%       { transform: scale(1.5); opacity: 0.6; }
+}
+
+.qrscan-hint {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ── Dev-only test button ─────────────────────────────────── */
+.qrscan-test-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 20px;
+  background: transparent;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.qrscan-test-btn:hover  { background: #f8fafc; border-color: #94a3b8; }
+.qrscan-test-btn:active { background: #f1f5f9; }
+
+/* ── Html5Qrcode worker element (off-screen, invisible) ───── */
+.qrscan-worker {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Result screen (success & fail) ──────────────────────── */
+.qrscan-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  animation: qrscan-slide-up 0.25s ease;
+}
+
+@keyframes qrscan-slide-up {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Status circle */
+.qrscan-result-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qrscan-result-circle-success {
+  background: #f0fdf4;
+  border: 3px solid #86efac;
+}
+
+.qrscan-result-circle-fail {
+  background: #fff5f5;
+  border: 3px solid #fca5a5;
+}
+
+.qrscan-result-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.qrscan-result-sub {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-top: -8px;
+}
+
+/* ── Session info card (success) ──────────────────────────── */
+.qrscan-info-card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 4px 16px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.07);
+}
+
+.qrscan-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.qrscan-info-divider {
+  height: 1px;
+  background: #f1f5f9;
+}
+
+.qrscan-info-label {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.qrscan-info-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  text-align: right;
+  max-width: 60%;
+}
+
+/* ── Primary action button ────────────────────────────────── */
+.qrscan-continue-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.1px;
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.25);
+  transition: opacity 0.18s, box-shadow 0.18s;
+}
+.qrscan-continue-btn:hover  { opacity: 0.92; box-shadow: 0 8px 32px rgba(37, 99, 235, 0.35); }
+.qrscan-continue-btn:active { opacity: 0.85; }
+
+/* ── Fail reason box (orange) ─────────────────────────────── */
+.qrscan-fail-box {
+  width: 100%;
+  background: #fff7ed;
+  border: 1.5px solid #fed7aa;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.qrscan-fail-reasons {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qrscan-fail-reasons li {
+  font-size: 13px;
+  color: #92400e;
+  line-height: 1.5;
+  padding-left: 16px;
+  position: relative;
+}
+
+.qrscan-fail-reasons li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #f97316;
+  font-weight: 700;
+}
+
+/* ── Outlined retry button ────────────────────────────────── */
+.qrscan-retry-btn {
+  width: 100%;
+  padding: 13px;
+  background: transparent;
+  color: #475569;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.qrscan-retry-btn:hover  { border-color: #94a3b8; color: #1e293b; }
+.qrscan-retry-btn:active { background: #f8fafc; }
