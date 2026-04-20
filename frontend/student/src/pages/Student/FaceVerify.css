@@ -353,3 +353,60 @@
   line-height: 1.55;
   max-width: 280px;
 }
+
+/* ── Alert / Status Message (Claude added) ──────────────────── */
+.fv-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 340px;
+  margin: 16px auto 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  border: 1px solid transparent;
+  animation: fv-alert-pop 0.25s ease-out;
+}
+
+.fv-alert-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.fv-alert-info {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+.fv-alert-info .fv-alert-icon { background: #2563eb; }
+
+.fv-alert-warning {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+.fv-alert-warning .fv-alert-icon { background: #f59e0b; }
+
+.fv-alert-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+.fv-alert-error .fv-alert-icon { background: #ef4444; }
+
+@keyframes fv-alert-pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
