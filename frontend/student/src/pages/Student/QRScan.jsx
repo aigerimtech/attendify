@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import { Html5Qrcode } from 'html5-qrcode';
 import { mockSession } from '../../data/mockData';
-import './QRScan.css';
+import { useTheme } from '../../context/ThemeContext';
 
 const TIMEOUT_MS = 30_000;
 const SCAN_INTERVAL_MS = 600;
@@ -21,18 +21,20 @@ function dataUrlToFile(dataUrl, filename = 'frame.jpg') {
 
 export default function QRScan() {
   const navigate = useNavigate();
-  const webcamRef = useRef(null);
-  const decoderRef = useRef(null);    // Html5Qrcode instance
-  const intervalRef = useRef(null);   // scan polling interval
-  const timerRef = useRef(null);      // 30-second timeout
-  const busyRef = useRef(false);      // prevent overlapping scan calls
-  const resolvedRef = useRef(false);  // prevent double-resolve
+  const { theme: t } = useTheme();
+  const webcamRef    = useRef(null);
+  const decoderRef   = useRef(null);
+  const intervalRef  = useRef(null);
+  const timerRef     = useRef(null);
+  const busyRef      = useRef(false);
+  const resolvedRef  = useRef(false);
+  const scanDirRef   = useRef(1); // 1 = going down, -1 = going up
 
   const [status, setStatus] = useState('loading'); // loading|scanning|success|denied|timeout
-  const [token, setToken] = useState('');
-  const [scanPos, setScanPos] = useState(0);
+  const [token, setToken]   = useState('');
+  const [scanPos, setScanPos] = useState(5);
 
-  // Init the decoder once (needs a real DOM node, even if off-screen)
+  // Init the decoder once
   useEffect(() => {
     decoderRef.current = new Html5Qrcode('qr-decode-worker');
     return () => {
@@ -41,11 +43,16 @@ export default function QRScan() {
     };
   }, []);
 
-  // Animate the scan line via state — 0% → 100%, reset on loop
+  // Animate scan line: bounces 5% → 88% → 5%
   useEffect(() => {
-    if (status !== 'scanning') { setScanPos(0); return; }
+    if (status !== 'scanning') { setScanPos(5); return; }
     const id = setInterval(() => {
-      setScanPos(p => (p >= 100 ? 0 : p + 0.6));
+      setScanPos(p => {
+        const next = p + scanDirRef.current * 0.6;
+        if (next >= 88) { scanDirRef.current = -1; return 88; }
+        if (next <= 5)  { scanDirRef.current =  1; return 5; }
+        return next;
+      });
     }, 18);
     return () => clearInterval(id);
   }, [status]);
@@ -59,7 +66,6 @@ export default function QRScan() {
     if (resolvedRef.current) return;
     setStatus('scanning');
 
-    // Hard 30-second cutoff
     timerRef.current = setTimeout(() => {
       if (resolvedRef.current) return;
       resolvedRef.current = true;
@@ -119,35 +125,62 @@ export default function QRScan() {
   const scanning = status === 'scanning' || status === 'loading';
   const failed   = status === 'denied'   || status === 'timeout';
 
+  // Viewfinder size: min(270px, 80vw)
+  const vfSize = 'min(270px, 80vw)';
+
   return (
-    <div className="qrscan-root">
+    <div style={{ background: t.bg, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {/* Keyframe for pulse dot */}
+      <style>{`@keyframes qr-pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+
       {/* ── Header ── */}
-      <header className="qrscan-header">
+      <header style={{
+        background: t.hdr, borderBottom: `1px solid ${t.bdr}`,
+        display: 'flex', alignItems: 'center', padding: '14px 18px', flexShrink: 0,
+      }}>
         <button
           type="button"
-          className="qrscan-back"
           onClick={() => navigate('/student/dashboard')}
           aria-label="Back to dashboard"
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center',
+          }}
         >
-          <BackArrowIcon />
+          <BackArrowIcon color={t.txt} />
         </button>
-        <h1 className="qrscan-title">Scan QR Code</h1>
-        {/* Spacer balances the back button so title is centred */}
-        <div className="qrscan-header-spacer" />
+        <h1 style={{
+          flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800,
+          color: t.txt, margin: 0, letterSpacing: -0.3,
+        }}>
+          Scan QR Code
+        </h1>
+        <div style={{ width: 40 }} />
       </header>
 
-      <div className="qrscan-body">
+      {/* ── Body ── */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', padding: '24px 20px', gap: 20,
+      }}>
 
         {/* ══ SCANNING STATE ══ */}
         {scanning && (
           <>
-            <p className="qrscan-subtitle">
+            <p style={{
+              fontSize: 13, color: t.txtL, textAlign: 'center',
+              lineHeight: 1.6, margin: 0, maxWidth: 280,
+            }}>
               Point your camera at the QR code displayed on the projector screen
             </p>
 
-            {/* Viewfinder: outer positions corners, inner clips webcam */}
-            <div className="qrscan-viewfinder-outer">
-              <div className="qrscan-viewfinder-inner">
+            {/* Viewfinder */}
+            <div style={{ position: 'relative', width: vfSize, height: vfSize }}>
+              {/* Inner camera div */}
+              <div style={{
+                width: '100%', height: '100%', borderRadius: 20,
+                background: '#060412', overflow: 'hidden', position: 'relative',
+              }}>
                 <Webcam
                   ref={webcamRef}
                   audio={false}
@@ -156,37 +189,64 @@ export default function QRScan() {
                   videoConstraints={{ facingMode: 'environment' }}
                   onUserMedia={handleUserMedia}
                   onUserMediaError={handleUserMediaError}
-                  className="qrscan-webcam"
                   mirrored={false}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
-                {/* Subtle grid overlay */}
-                <div className="qrscan-grid" aria-hidden="true" />
-                {/* Scan line animated via state */}
+
+                {/* Grid overlay */}
+                <div aria-hidden="true" style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.05,
+                  backgroundImage: [
+                    'linear-gradient(#fff 1px, transparent 1px)',
+                    'linear-gradient(90deg, #fff 1px, transparent 1px)',
+                  ].join(','),
+                  backgroundSize: '26px 26px',
+                }} />
+
+                {/* Rose scan line */}
                 {status === 'scanning' && (
-                  <div
-                    className="qrscan-scan-line"
-                    style={{ top: `${scanPos}%` }}
-                    aria-hidden="true"
-                  />
+                  <div aria-hidden="true" style={{
+                    position: 'absolute', left: 0, right: 0, height: 2,
+                    background: 'linear-gradient(90deg,transparent,#e11d48,#fb7185,#e11d48,transparent)',
+                    boxShadow: '0 0 12px rgba(244,63,94,.6)',
+                    top: `${scanPos}%`,
+                    transition: 'top .018s linear',
+                    pointerEvents: 'none',
+                  }} />
                 )}
               </div>
-              {/* Corner brackets outside inner div so they aren't clipped */}
-              <span className="qrscan-corner qrscan-corner-tl" aria-hidden="true" />
-              <span className="qrscan-corner qrscan-corner-tr" aria-hidden="true" />
-              <span className="qrscan-corner qrscan-corner-bl" aria-hidden="true" />
-              <span className="qrscan-corner qrscan-corner-br" aria-hidden="true" />
+
+              {/* 4 corner brackets */}
+              {[
+                { top: 0, left: 0,     borderTop: `3px solid ${t.pri}`, borderLeft:   `3px solid ${t.pri}`, borderRadius: '12px 0 0 0'  },
+                { top: 0, right: 0,    borderTop: `3px solid ${t.pri}`, borderRight:  `3px solid ${t.pri}`, borderRadius: '0 12px 0 0'  },
+                { bottom: 0, left: 0,  borderBottom: `3px solid ${t.pri}`, borderLeft: `3px solid ${t.pri}`, borderRadius: '0 0 0 12px' },
+                { bottom: 0, right: 0, borderBottom: `3px solid ${t.pri}`, borderRight:`3px solid ${t.pri}`, borderRadius: '0 0 12px 0' },
+              ].map((s, i) => (
+                <div key={i} aria-hidden="true" style={{ position: 'absolute', width: 26, height: 26, pointerEvents: 'none', ...s }} />
+              ))}
             </div>
 
-            {/* Pulsing indicator row */}
-            <div className="qrscan-searching">
-              <span className="qrscan-pulse-dot" aria-hidden="true" />
-              <span className="qrscan-hint">Searching for QR code...</span>
+            {/* Status row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div aria-hidden="true" style={{
+                width: 7, height: 7, borderRadius: '50%', background: t.acc,
+                animation: 'qr-pulse 1.4s infinite',
+              }} />
+              <span style={{ fontSize: 12, color: t.txtL }}>
+                Searching for QR code...
+              </span>
             </div>
 
             {/* Dev-only test trigger */}
             {import.meta.env.DEV && (
-              <button type="button" className="qrscan-test-btn" onClick={simulateScan}>
-                <BeakerIcon />
+              <button type="button" onClick={simulateScan} style={{
+                background: t.card, border: `1.5px solid ${t.bdr}`, borderRadius: 10,
+                padding: '8px 16px', fontSize: 12, fontWeight: 700, color: t.txtL,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                fontFamily: "'DM Sans', sans-serif",
+              }}>
+                <BeakerIcon color={t.txtL} />
                 Test Scan
               </button>
             )}
@@ -195,60 +255,132 @@ export default function QRScan() {
 
         {/* ══ SUCCESS STATE ══ */}
         {status === 'success' && (
-          <div className="qrscan-result">
-            <div className="qrscan-result-circle qrscan-result-circle-success">
-              <CheckLgIcon />
-            </div>
-            <h2 className="qrscan-result-title">QR Code Scanned</h2>
-            <p className="qrscan-result-sub">Session · {token}</p>
-
-            <div className="qrscan-info-card">
-              <div className="qrscan-info-row">
-                <span className="qrscan-info-label">Course</span>
-                <span className="qrscan-info-value">{mockSession.courseName}</span>
-              </div>
-              <div className="qrscan-info-divider" />
-              <div className="qrscan-info-row">
-                <span className="qrscan-info-label">Location</span>
-                <span className="qrscan-info-value">{mockSession.location}</span>
-              </div>
-              <div className="qrscan-info-divider" />
-              <div className="qrscan-info-row">
-                <span className="qrscan-info-label">Time</span>
-                <span className="qrscan-info-value">{mockSession.time}</span>
-              </div>
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 16, width: '100%', textAlign: 'center',
+          }}>
+            <div style={{
+              width: 88, height: 88, borderRadius: '50%',
+              background: t.okL, border: '3px solid rgba(5,150,105,.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <CheckLgIcon color={t.ok} />
             </div>
 
-            <button
-              type="button"
-              className="qrscan-continue-btn"
-              onClick={() => navigate('/student/verify')}
-            >
+            <div>
+              <h2 style={{ fontSize: 19, fontWeight: 800, color: t.txt, margin: '0 0 6px', letterSpacing: -0.3 }}>
+                QR Code Scanned
+              </h2>
+              <p style={{ fontSize: 13, color: t.txtL, margin: 0 }}>Session · {token}</p>
+            </div>
+
+            {/* Details card */}
+            <div style={{
+              background: t.card, borderRadius: 16, padding: 16,
+              border: `1px solid ${t.bdr}`, width: '100%', overflow: 'hidden',
+            }}>
+              {[
+                { label: 'Course',   value: mockSession.courseName },
+                { label: 'Location', value: mockSession.location },
+                { label: 'Time',     value: mockSession.time },
+              ].map(({ label, value }, i, arr) => (
+                <div key={label}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', padding: '10px 0',
+                  }}>
+                    <span style={{ fontSize: 13, color: t.txtL }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: t.txt }}>{value}</span>
+                  </div>
+                  {i < arr.length - 1 && <div style={{ height: 1, background: t.bdr }} />}
+                </div>
+              ))}
+            </div>
+
+            {/* Green continue button */}
+            <button type="button" onClick={() => navigate('/student/verify')} style={{
+              width: '100%',
+              background: 'linear-gradient(135deg,#047857,#059669)',
+              color: '#fff', border: 'none', borderRadius: 14,
+              padding: '13px 16px', fontSize: 15, fontWeight: 700,
+              cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              boxShadow: '0 6px 18px rgba(5,150,105,.3)',
+            }}>
               Continue to Face Verify
+            </button>
+
+            {/* Scan again */}
+            <button type="button" onClick={handleRetry} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 13, color: t.txtL, fontFamily: "'DM Sans', sans-serif",
+              padding: '4px 8px',
+            }}>
+              Scan again
             </button>
           </div>
         )}
 
-        {/* ══ FAILED STATE (denied | timeout) ══ */}
+        {/* ══ FAILED STATE ══ */}
         {failed && (
-          <div className="qrscan-result">
-            <div className="qrscan-result-circle qrscan-result-circle-fail">
-              <WarningLgIcon />
-            </div>
-            <h2 className="qrscan-result-title">QR Scan Failed</h2>
-
-            <div className="qrscan-fail-box">
-              <ul className="qrscan-fail-reasons">
-                <li>QR code may be too far or not clearly visible</li>
-                <li>Poor lighting conditions in the room</li>
-                <li>Camera access was denied or unavailable</li>
-              </ul>
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 16, width: '100%', textAlign: 'center',
+          }}>
+            <div style={{
+              width: 88, height: 88, borderRadius: '50%',
+              background: t.accL, border: `3px solid ${t.accLL}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <WarningCircleIcon color={t.acc} />
             </div>
 
-            <button type="button" className="qrscan-continue-btn">
+            <div>
+              <h2 style={{ fontSize: 19, fontWeight: 800, color: t.txt, margin: '0 0 6px', letterSpacing: -0.3 }}>
+                QR Scan Failed
+              </h2>
+              <p style={{ fontSize: 13, color: t.txtL, lineHeight: 1.6, margin: 0 }}>
+                We couldn't detect a QR code. Try the tips below.
+              </p>
+            </div>
+
+            {/* Rose info box */}
+            <div style={{
+              background: t.accL, borderRadius: 14, padding: '14px 16px',
+              border: `1px solid ${t.accLL}`, width: '100%', textAlign: 'left',
+            }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: t.acc, margin: '0 0 6px' }}>
+                Why might this happen?
+              </p>
+              {[
+                'QR code may be too far or not clearly visible',
+                'Poor lighting conditions in the room',
+                'Camera access was denied or unavailable',
+              ].map((reason) => (
+                <p key={reason} style={{ fontSize: 12, color: t.txtL, margin: '0 0 4px', lineHeight: 1.5 }}>
+                  · {reason}
+                </p>
+              ))}
+            </div>
+
+            {/* Green notify button */}
+            <button type="button" style={{
+              width: '100%',
+              background: 'linear-gradient(135deg,#047857,#059669)',
+              color: '#fff', border: 'none', borderRadius: 14,
+              padding: '13px 16px', fontSize: 15, fontWeight: 700,
+              cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              boxShadow: '0 6px 18px rgba(5,150,105,.3)',
+            }}>
               Notify Instructor
             </button>
-            <button type="button" className="qrscan-retry-btn" onClick={handleRetry}>
+
+            {/* Outlined try again */}
+            <button type="button" onClick={handleRetry} style={{
+              width: '100%', padding: 12, borderRadius: 12,
+              border: `1.5px solid ${t.bdr}`, background: t.card,
+              fontSize: 13, fontWeight: 700, color: t.txtL,
+              cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+            }}>
               Try Again
             </button>
           </div>
@@ -259,47 +391,51 @@ export default function QRScan() {
           It is off-screen and invisible; scanFile() does not render into it
           when showImage=false.
         */}
-        <div id="qr-decode-worker" className="qrscan-worker" aria-hidden="true" />
+        <div
+          id="qr-decode-worker"
+          aria-hidden="true"
+          style={{ position: 'absolute', left: '-9999px', top: 0, width: 1, height: 1, overflow: 'hidden' }}
+        />
       </div>
     </div>
   );
 }
 
-/* ── SVG icons ─────────────────────────────────────────────── */
+/* ── SVG icons ────────────────────────────────────────────────── */
 
-function BackArrowIcon() {
+function BackArrowIcon({ color }) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
     </svg>
   );
 }
 
-function CheckLgIcon() {
+function CheckLgIcon({ color }) {
   return (
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
-      stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
+      stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6L9 17l-5-5" />
     </svg>
   );
 }
 
-function WarningLgIcon() {
+function WarningCircleIcon({ color }) {
   return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
-      stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <line x1="12" y1="9" x2="12" y2="13" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
+    <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+      <path d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z" />
     </svg>
   );
 }
 
-function BeakerIcon() {
+function BeakerIcon({ color }) {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 3h6v11l4 7H5l4-7V3z" />
       <line x1="9" y1="9" x2="15" y2="9" />
     </svg>

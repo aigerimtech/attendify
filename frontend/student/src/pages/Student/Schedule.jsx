@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { mockCourses, mockRecentActivity } from '../../data/mockData';
-import './Schedule.css';
+import { useTheme } from "../../context/ThemeContext";
+import { LogoMark, LogoMarkDark } from "../../components/LogoMark";
 
 const COURSE_COLORS = {
   CS101:   '#2563eb',
@@ -26,10 +27,10 @@ const DAY_ABBRS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 const NAV_ITEMS = [
-  { label: 'Home',     path: '/student/dashboard', icon: 'home'     },
-  { label: 'Schedule', path: '/student/schedule',  icon: 'calendar' },
-  { label: 'Stats',    path: '/student/stats',     icon: 'stats'    },
-  { label: 'Profile',  path: '/student/profile',   icon: 'user'     },
+  { label: 'Home',     path: '/student/dashboard', iconPath: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10' },
+  { label: 'Schedule', path: '/student/schedule',  iconPath: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' },
+  { label: 'Stats',    path: '/student/stats',     iconPath: 'M18 20V10M12 20V4M6 20v-6' },
+  { label: 'Profile',  path: '/student/profile',   iconPath: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z' },
 ];
 
 /** Returns an array of 5 Date objects for Mon–Fri of the current week */
@@ -53,8 +54,9 @@ function getTodayIdx() {
 }
 
 export default function Schedule() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { theme: t, isDark } = useTheme();
 
   const currentStudent = JSON.parse(localStorage.getItem('currentStudent'));
 
@@ -91,284 +93,344 @@ export default function Schedule() {
       .map((a) => a.code)
   );
 
-  const isToday  = selectedIdx === todayIdx;
-  const dayName  = DAY_NAMES[selectedIdx];
+  const isToday = selectedIdx === todayIdx;
+  const dayName = DAY_NAMES[selectedIdx];
   const dayLabel = isToday
     ? `${dayClasses.length} class${dayClasses.length !== 1 ? 'es' : ''} · ${dayName} (Today)`
     : `${dayClasses.length} class${dayClasses.length !== 1 ? 'es' : ''} · ${dayName}`;
 
+  const initials = currentStudent.name.split(' ').map((w) => w[0]).join('').toUpperCase();
+
   return (
-    <div className="sched-root">
+    <div style={{ background: t.bg, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
       {/* ── Header ── */}
-      <header className="sched-header">
-        <div className="sched-header-top">
-          <div className="sched-header-left">
-            <div className="sched-logo-icon" aria-hidden="true">
-              <GraduationCapIcon />
-            </div>
-            <span className="sched-logo-text">Attendify</span>
+      <header style={{
+        background: t.hdr,
+        borderBottom: `1px solid ${t.bdr}`,
+        flexShrink: 0,
+      }}>
+        {/* Top bar */}
+        <div style={{
+          padding: '14px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {isDark ? <LogoMarkDark size={34} /> : <LogoMark size={34} />}
+            <span style={{ fontWeight: 800, fontSize: 18, color: t.txt, letterSpacing: -0.3 }}>
+              Attendify
+            </span>
           </div>
-          <div className="sched-bell-wrap">
-            <button type="button" className="sched-icon-btn" aria-label="Notifications">
-              <BellIcon />
-            </button>
-            <span className="sched-bell-dot" aria-hidden="true" />
-          </div>
-        </div>
-
-        <div className="sched-header-titles">
-          <h1 className="sched-page-title">Schedule</h1>
-          <p className="sched-page-sub">Spring Semester 2025</p>
-        </div>
-
-        {/* Weekly strip */}
-        <div className="sched-week-strip" role="tablist" aria-label="Select day">
-          {weekDays.map((date, idx) => {
-            const isSelectedToday = idx === todayIdx;
-            const isSelected      = idx === selectedIdx;
-            let cellClass = 'sched-day-cell';
-            if (isSelectedToday)       cellClass += ' sched-day-cell-today';
-            else if (isSelected)       cellClass += ' sched-day-cell-selected';
-
-            return (
-              <button
-                key={idx}
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                className={cellClass}
-                onClick={() => setSelectedIdx(idx)}
-              >
-                <span className="sched-day-abbr">{DAY_ABBRS[idx]}</span>
-                <span className="sched-day-num">{date.getDate()}</span>
-                {dayHasClasses(idx) && (
-                  <span className="sched-day-dot" aria-hidden="true" />
-                )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ position: 'relative' }}>
+              <button type="button" aria-label="Notifications"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                <svg width={21} height={21} viewBox="0 0 24 24" fill="none"
+                  stroke={t.txtL} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
               </button>
-            );
-          })}
+              <span aria-hidden="true" style={{
+                position: 'absolute', top: -2, right: -2,
+                width: 8, height: 8, borderRadius: '50%',
+                background: t.acc, border: `2px solid ${t.hdr}`,
+              }} />
+            </div>
+            <div style={{
+              width: 34, height: 34, borderRadius: '50%',
+              background: 'linear-gradient(135deg,#3730a3,#4f46e5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 800, color: '#fff',
+            }}>
+              {initials}
+            </div>
+          </div>
+        </div>
+
+        {/* Title + subtitle */}
+        <div style={{ padding: '0 18px 14px' }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: t.txt, letterSpacing: -0.4, margin: '0 0 2px' }}>
+            Schedule
+          </h1>
+          <p style={{ fontSize: 12, color: t.txtL, margin: '0 0 14px' }}>Spring Semester 2025</p>
+
+          {/* Weekly day strip */}
+          <div style={{ display: 'flex', gap: 6 }} role="tablist" aria-label="Select day">
+            {weekDays.map((date, idx) => {
+              const isSelected = idx === selectedIdx;
+              const isThisToday = idx === todayIdx;
+
+              let bg = t.bg;
+              let border = 'none';
+              if (isSelected) { bg = t.pri; border = 'none'; }
+              else if (isThisToday) { bg = t.priLL; border = `1.5px solid ${t.priL}`; }
+
+              const dayLabelColor = isSelected ? 'rgba(255,255,255,.7)' : t.txtL;
+              const dayNumColor   = isSelected ? '#fff' : t.txt;
+              const dotColor      = isSelected ? 'rgba(255,255,255,.65)' : isThisToday ? t.pri : t.acc;
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => setSelectedIdx(idx)}
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    borderRadius: 13,
+                    padding: '9px 3px',
+                    cursor: 'pointer',
+                    transition: 'all .15s',
+                    background: bg,
+                    border,
+                    outline: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  <span style={{ fontSize: 10, fontWeight: 700, color: dayLabelColor }}>
+                    {DAY_ABBRS[idx]}
+                  </span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: dayNumColor }}>
+                    {date.getDate()}
+                  </span>
+                  {dayHasClasses(idx) && (
+                    <span aria-hidden="true" style={{
+                      width: 5, height: 5, borderRadius: '50%',
+                      background: dotColor, marginTop: 4, display: 'block',
+                    }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </header>
 
       {/* ── Class list ── */}
-      <div className="sched-body">
-        <p className="sched-day-label">{dayLabel}</p>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px' }}>
 
         {dayClasses.length === 0 ? (
-          <div className="sched-empty">
-            <div className="sched-empty-icon"><CalendarOffIcon /></div>
-            <p className="sched-empty-title">No classes</p>
-            <p className="sched-empty-sub">Enjoy your free day!</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40 }}>
+            <div style={{
+              width: 60, height: 60, borderRadius: '50%',
+              background: t.priLL,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 14px',
+            }}>
+              <svg width={26} height={26} viewBox="0 0 24 24" fill="none"
+                stroke={t.pri} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+              </svg>
+            </div>
+            <p style={{ fontWeight: 700, fontSize: 15, color: t.txt, margin: '0 0 4px', textAlign: 'center' }}>
+              No classes today
+            </p>
+            <p style={{ fontSize: 13, color: t.txtL, margin: 0, textAlign: 'center' }}>
+              Enjoy your free day!
+            </p>
           </div>
         ) : (
-          dayClasses.map((course) => {
-            const color    = COURSE_COLORS[course.code] ?? '#2563eb';
-            const attended = isToday && attendedToday.has(course.code);
-            return (
-              <div
-                key={course.code}
-                className="sched-card"
-                style={{ borderLeft: `4px solid ${color}` }}
-              >
-                <span className="sched-card-code" style={{ color }}>
-                  {course.code}
-                </span>
-                <p className="sched-card-name">{course.name}</p>
+          <>
+            <p style={{ fontSize: 12, fontWeight: 700, color: t.txtL, marginBottom: 12 }}>
+              {dayLabel}
+            </p>
 
-                <div className="sched-card-divider" />
+            {dayClasses.map((course) => {
+              const color   = COURSE_COLORS[course.code] ?? '#2563eb';
+              const attended = isToday && attendedToday.has(course.code);
+              const live     = isToday && !attended;
 
-                <div className="sched-card-meta">
-                  <span className="sched-card-meta-item">
-                    <ClockIcon />
-                    {course.time}
-                  </span>
-                  <span className="sched-card-meta-dot">·</span>
-                  <span className="sched-card-meta-item">
-                    <PinIcon />
-                    {course.room}
-                  </span>
-                </div>
+              // Determine badge
+              let badgeBg, badgeColor, badgeBorder, badgeText;
+              if (attended) {
+                badgeBg = t.priLL; badgeColor = t.pri; badgeBorder = 'none'; badgeText = 'Completed';
+              } else if (live) {
+                badgeBg = t.accL; badgeColor = t.acc; badgeBorder = `1px solid ${t.accLL}`; badgeText = '● LIVE';
+              } else {
+                badgeBg = t.bg; badgeColor = t.txtL; badgeBorder = 'none'; badgeText = 'Upcoming';
+              }
 
-                <div className="sched-card-instructor">
-                  <UserSmIcon />
-                  {course.instructor}
-                </div>
+              return (
+                <div
+                  key={course.code}
+                  style={{
+                    background: t.card,
+                    borderRadius: 16,
+                    marginBottom: 12,
+                    border: `1px solid ${t.bdr}`,
+                    borderLeft: `4px solid ${color}`,
+                    boxShadow: t.sh,
+                    padding: 15,
+                  }}
+                >
+                  {/* Top row */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: 0.6, display: 'block', marginBottom: 2 }}>
+                        {course.code}
+                      </span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: t.txt }}>
+                        {course.name}
+                      </span>
+                    </div>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700,
+                      padding: '4px 10px', borderRadius: 20,
+                      whiteSpace: 'nowrap', flexShrink: 0,
+                      background: badgeBg, color: badgeColor, border: badgeBorder,
+                    }}>
+                      {badgeText}
+                    </span>
+                  </div>
 
-                {isToday && (
-                  <div className="sched-card-footer">
-                    {attended ? (
-                      <span className="sched-badge-present">Present</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="sched-scan-btn"
-                        onClick={() => navigate('/student/scan')}
-                      >
-                        <QrSmIcon />
-                        Scan QR
-                      </button>
+                  {/* Info row */}
+                  <div style={{
+                    display: 'flex', flexWrap: 'wrap', gap: 10,
+                    fontSize: 11, color: t.txtL,
+                    marginBottom: (live || attended) ? 12 : 0,
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none"
+                        stroke={t.txtL} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      {course.time}
+                    </span>
+                    <span>·</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none"
+                        stroke={t.txtL} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                      {course.room}
+                    </span>
+                    {course.instructor && (
+                      <>
+                        <span>·</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <svg width={12} height={12} viewBox="0 0 24 24" fill="none"
+                            stroke={t.txtL} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                          </svg>
+                          {course.instructor}
+                        </span>
+                      </>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })
+
+                  {/* Active session → green scan button */}
+                  {live && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/student/scan')}
+                      style={{
+                        background: 'linear-gradient(135deg,#047857,#059669)',
+                        borderRadius: 11,
+                        padding: '10px 16px',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: '#fff',
+                        border: 'none',
+                        display: 'flex',
+                        gap: 7,
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        fontFamily: "'DM Sans', sans-serif",
+                        boxShadow: '0 6px 18px rgba(5,150,105,.3)',
+                      }}
+                    >
+                      <svg width={13} height={13} viewBox="0 0 24 24" fill="none"
+                        stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z" />
+                        <path d="M14 14h3v3 M17 14v3h3 M17 20h3" />
+                      </svg>
+                      Scan QR
+                    </button>
+                  )}
+
+                  {/* Completed session → green strip */}
+                  {attended && (
+                    <div style={{
+                      background: t.okL,
+                      borderRadius: 9,
+                      padding: '8px 13px',
+                      border: '1px solid rgba(5,150,105,.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                    }}>
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+                        stroke={t.ok} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: t.ok }}>
+                        Attendance recorded
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
         )}
       </div>
 
-      {/* ── Bottom navigation ── */}
-      <nav className="sched-nav">
+      {/* ── Bottom nav ── */}
+      <nav style={{
+        background: t.nav,
+        borderTop: `1px solid ${t.bdr}`,
+        display: 'flex',
+        padding: '8px 0 18px',
+        flexShrink: 0,
+      }}>
         {NAV_ITEMS.map((item) => {
           const active = location.pathname === item.path;
           return (
             <button
               key={item.path}
               type="button"
-              className={`sched-nav-item${active ? ' sched-nav-item-active' : ''}`}
-              onClick={() => navigate(item.path)}
               aria-label={item.label}
+              onClick={() => navigate(item.path)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 3,
+                padding: '6px 0',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontFamily: "'DM Sans', sans-serif",
+              }}
             >
-              <NavIcon type={item.icon} />
-              <span className="sched-nav-label">{item.label}</span>
+              <svg width={22} height={22} viewBox="0 0 24 24" fill="none"
+                stroke={active ? t.pri : t.txtL} strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round">
+                <path d={item.iconPath} />
+              </svg>
+              <span style={{ fontSize: 11, fontWeight: 700, color: active ? t.pri : t.txtL }}>
+                {item.label}
+              </span>
+              {active && (
+                <div style={{ width: 18, height: 3, borderRadius: 999, background: t.pri }} />
+              )}
             </button>
           );
         })}
       </nav>
-
     </div>
-  );
-}
-
-/* ── Icon switcher ───────────────────────────────────────────── */
-function NavIcon({ type }) {
-  if (type === 'home')     return <HomeIcon />;
-  if (type === 'calendar') return <CalendarIcon />;
-  if (type === 'stats')    return <StatsIcon />;
-  if (type === 'user')     return <UserIcon />;
-  return null;
-}
-
-/* ── Inline SVG icons ────────────────────────────────────────── */
-
-function GraduationCapIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-      <path d="M6 12v5c3 3 9 3 12 0v-5" />
-    </svg>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
-  );
-}
-
-function CalendarOffIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-      <line x1="10" y1="14" x2="14" y2="18" />
-      <line x1="14" y1="14" x2="10" y2="18" />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  );
-}
-
-function PinIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}
-
-function UserSmIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-
-function QrSmIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-      <rect x="14" y="14" width="3" height="3" />
-      <line x1="19" y1="14" x2="19" y2="17" />
-      <line x1="17" y1="19" x2="21" y2="19" />
-    </svg>
-  );
-}
-
-/* ── Nav icons ───────────────────────────────────────────────── */
-function HomeIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  );
-}
-
-function StatsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6"  y1="20" x2="6"  y2="14" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
   );
 }
