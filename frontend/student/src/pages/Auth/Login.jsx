@@ -1,61 +1,50 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { mockAccounts } from '../../data/mockData';
 import { useTheme } from "../../context/ThemeContext";
 import { LogoMark, LogoMarkDark } from "../../components/LogoMark";
 import { IndigoBtn } from "../../components/shared/IndigoBtn";
+import { login } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
   const { theme: t, isDark } = useTheme();
+  const { saveLogin } = useAuth();
 
   const [role, setRole] = useState('student');
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
-  const [identifierError, setIdentifierError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function validate() {
-    let valid = true;
-    const trimmed = identifier.trim();
-    if (!trimmed) {
-      setIdentifierError('Please enter a valid email or Student ID');
-      valid = false;
-    } else if (trimmed.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setIdentifierError('Please enter a valid email or Student ID');
-      valid = false;
-    } else {
-      setIdentifierError('');
-    }
-    if (!password) {
-      setPasswordError('Password is required');
-      valid = false;
-    } else {
-      setPasswordError('');
-    }
-    return valid;
-  }
-
-  function handleSignIn(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    if (!validate()) return;
-
-    const match = mockAccounts.find(
-      (u) => u.email === identifier && u.password === password
-    );
-
-    if (!match) {
-      setError('Invalid credentials. Please try again.');
+    if (!email || !password) {
+      setError("Please fill in all fields.");
       return;
     }
-
-    localStorage.setItem('currentStudent', JSON.stringify(match));
-    navigate('/student/dashboard');
-  }
+    setLoading(true);
+    setError("");
+    try {
+      const data = await login(email, password);
+      saveLogin(data);
+      if (data.role === "student") {
+        if (!data.face_enrolled) {
+          navigate("/face-setup");
+        } else {
+          navigate("/dashboard");
+        }
+      } else if (data.role === "instructor") {
+        navigate("/instructor/dashboard");
+      }
+    } catch (err) {
+      setError(err?.detail || "Invalid email or password.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const inputBase = {
     width: '100%',
@@ -162,12 +151,12 @@ export default function Login() {
           })}
         </div>
 
-        <form onSubmit={handleSignIn} noValidate>
+        <form onSubmit={handleSubmit} noValidate>
 
-          {/* Identifier field */}
+          {/* Email / ID field */}
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 13, fontWeight: 700, color: t.txt, marginBottom: 6, display: 'block' }}
-              htmlFor="identifier">
+              htmlFor="email">
               {role === 'student' ? 'Student ID or Email' : 'Instructor ID or Email'}
             </label>
             <div style={{ position: 'relative' }}>
@@ -178,16 +167,15 @@ export default function Login() {
                 <path d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
               </svg>
               <input
-                id="identifier"
-                style={{ ...inputBase, border: `1.5px solid ${identifierError ? t.acc : t.bdr}` }}
+                id="email"
+                style={{ ...inputBase, border: `1.5px solid ${t.bdr}` }}
                 type="text"
                 placeholder={role === 'student' ? 'Enter your student ID or email' : 'Enter your instructor ID or email'}
-                value={identifier}
-                onChange={(e) => { setIdentifier(e.target.value); setIdentifierError(''); }}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 autoComplete="username"
               />
             </div>
-            {identifierError && <p style={{ fontSize: 12, color: t.acc, marginTop: 4, marginBottom: 0 }}>{identifierError}</p>}
           </div>
 
           {/* Password field */}
@@ -204,11 +192,11 @@ export default function Login() {
               </svg>
               <input
                 id="password"
-                style={{ ...inputBase, paddingRight: 42, border: `1.5px solid ${passwordError ? t.acc : t.bdr}` }}
+                style={{ ...inputBase, paddingRight: 42, border: `1.5px solid ${t.bdr}` }}
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
                 value={password}
-                onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }}
+                onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
               />
               <button
@@ -224,8 +212,19 @@ export default function Login() {
                 {showPassword ? <EyeOffIcon color={t.txtL} /> : <EyeIcon color={t.txtL} />}
               </button>
             </div>
-            {passwordError && <p style={{ fontSize: 12, color: t.acc, marginTop: 4, marginBottom: 0 }}>{passwordError}</p>}
           </div>
+
+          {/* Error banner */}
+          {error && (
+            <div style={{
+              background: t.accL, border: `1px solid ${t.accLL}`,
+              borderRadius: 10, padding: "10px 14px",
+              fontSize: 13, color: t.acc, marginBottom: 14,
+              textAlign: 'center',
+            }}>
+              {error}
+            </div>
+          )}
 
           {/* Remember me + Forgot password */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -243,21 +242,18 @@ export default function Login() {
             </Link>
           </div>
 
-          {/* Error */}
-          {error && <p style={{ fontSize: 13, color: t.acc, marginBottom: 12, textAlign: 'center' }}>{error}</p>}
-
           {/* Submit */}
-          <IndigoBtn>Sign In</IndigoBtn>
+          <IndigoBtn disabled={loading}>{loading ? "Signing in…" : "Sign In"}</IndigoBtn>
         </form>
       </div>
 
       {/* Bottom link */}
-      <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: t.txtL }}>
+      {/*<p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: t.txtL }}>
         No account?{' '}
         <Link to="/register" style={{ color: t.pri, fontWeight: 700, textDecoration: 'none' }}>
           Register
         </Link>
-      </p>
+      </p>*/}
     </div>
   );
 }

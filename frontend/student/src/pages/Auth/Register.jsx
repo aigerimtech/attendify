@@ -3,15 +3,19 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from "../../context/ThemeContext";
 import { LogoMark, LogoMarkDark } from "../../components/LogoMark";
 import { IndigoBtn } from "../../components/shared/IndigoBtn";
+import { registerStudent, login } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Register() {
   const navigate = useNavigate();
   const { theme: t, isDark } = useTheme();
+  const { saveLogin } = useAuth();
 
   const [role, setRole] = useState('student');
   const [form, setForm] = useState({
     fullName: '',
     email: '',
+    studentNumber: '',
     department: '',
     password: '',
     confirmPassword: '',
@@ -19,6 +23,8 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState({});
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -40,6 +46,12 @@ export default function Register() {
       next.email = 'This field is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
       next.email = 'Please enter a valid email address';
+    }
+
+    if (role === 'student') {
+      if (!form.studentNumber.trim()) {
+        next.studentNumber = 'This field is required';
+      }
     }
 
     if (role === 'instructor') {
@@ -67,15 +79,32 @@ export default function Register() {
     return Object.keys(next).length === 0;
   }
 
-  function handleRegister(e) {
+  const handleRegister = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    if (role === 'student') {
-      navigate('/face-setup');
-    } else {
-      navigate('/login');
+    setLoading(true);
+    setError("");
+    try {
+      const nameParts = form.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || firstName;
+      await registerStudent({
+        email: form.email,
+        password: form.password,
+        first_name: firstName,
+        last_name: lastName,
+        student_number: form.studentNumber,
+        role: "student",
+      });
+      const loginData = await login(form.email, form.password);
+      saveLogin(loginData);
+      navigate("/face-setup");
+    } catch (err) {
+      setError(err?.detail || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   const inputBase = {
     width: '100%',
@@ -233,6 +262,33 @@ export default function Register() {
             </div>
             {errors.email && <p style={{ fontSize: 12, color: t.acc, marginTop: 4, marginBottom: 0 }}>{errors.email}</p>}
           </div>
+
+          {/* Student Number — Student only */}
+          {role === 'student' && (
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, color: t.txt, marginBottom: 6, display: 'block' }}
+                htmlFor="studentNumber">Student Number</label>
+              <div style={{ position: 'relative' }}>
+                <svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+                  stroke={t.txtL} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                  <path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z" />
+                </svg>
+                <input
+                  id="studentNumber"
+                  name="studentNumber"
+                  style={{ ...inputBase, border: `1.5px solid ${errors.studentNumber ? t.acc : t.bdr}` }}
+                  type="text"
+                  placeholder="Enter your student number"
+                  value={form.studentNumber}
+                  onChange={handleChange}
+                  autoComplete="off"
+                />
+              </div>
+              {errors.studentNumber && <p style={{ fontSize: 12, color: t.acc, marginTop: 4, marginBottom: 0 }}>{errors.studentNumber}</p>}
+            </div>
+          )}
 
           {/* Department — Instructor only */}
           {role === 'instructor' && (

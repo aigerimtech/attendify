@@ -1,0 +1,45 @@
+/* Attendify Admin — design tokens */
+:root {
+  --pri:        #4338ca;
+  --pri-dark:   #3730a3;
+  --pri-light:  #eef2ff;
+  --pri-border: #e0e7ff;
+
+  --green:       #059669;
+  --green-light: #ecfdf5;
+
+  --rose:       #f43f5e;
+  --rose-light: #fff1f2;
+
+  --txt:        #1e1b4b;
+  --txt-muted:  #94a3b8;
+  --txt-mid:    #6366f1;
+
+  --bg:   #f0f2ff;
+  --card: #ffffff;
+  --bdr:  #e0e7ff;
+
+  --font: 'DM Sans', sans-serif;
+
+  /* layout */
+  --sidebar-w: 232px;
+  --header-h:  60px;
+
+  /* shadows */
+  --sh:   0 1px 3px 0 rgb(0 0 0 / .06), 0 1px 2px -1px rgb(0 0 0 / .06);
+  --sh-md:0 4px 6px -1px rgb(0 0 0 / .07), 0 2px 4px -2px rgb(0 0 0 / .07);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--txt);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; color: inherit; }
+button { cursor: pointer; font-family: var(--font); }
+input, select, textarea { font-family: var(--font); }

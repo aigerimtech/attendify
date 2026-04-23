@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from "../../context/ThemeContext";
+import { forgotPassword, resetPassword } from "../../services/api";
 
 const STEPS = ['Email', 'Verify', 'Reset', 'Done'];
 
@@ -8,39 +9,21 @@ export default function ForgotPassword() {
   const navigate = useNavigate();
   const { theme: t } = useTheme();
 
-  // ── existing logic ──────────────────────────────────────────
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
-
-  function validate() {
-    if (!email.trim()) {
-      setEmailError('Email is required');
-      return false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('Please enter a valid email address');
-      return false;
-    }
-    setEmailError('');
-    return true;
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (validate()) setStep('code');
-  }
-  // ────────────────────────────────────────────────────────────
-
   const [step, setStep] = useState('email'); // email | code | reset | done
+  const [email, setEmail] = useState('');
+  const [apiEmail, setApiEmail] = useState('');
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const codeRefs = useRef([]);
 
   const stepIndex = { email: 0, code: 1, reset: 2, done: 3 };
   const current = stepIndex[step];
 
   function handleBack() {
+    setError('');
     if (step === 'code') setStep('email');
     else if (step === 'reset') setStep('code');
     else if (step === 'done') navigate('/login');
@@ -61,6 +44,63 @@ export default function ForgotPassword() {
     }
   }
 
+  // Step 1 — Send code
+  const handleSendCode = async () => {
+    if (!email) { setError('Enter your email address.'); return; }
+    setLoading(true); setError('');
+    try {
+      await forgotPassword(email);
+      setApiEmail(email);
+      setStep('code');
+      // Note: in dev mode, check terminal for:
+      // [ATTENDIFY] RESET CODE for email@test.com: 483920
+    } catch (err) {
+      setError('Something went wrong. Try again.');
+    } finally { setLoading(false); }
+  };
+
+  // Step 2 — Verify code (server validates in step 3)
+  const handleVerifyCode = () => {
+    const fullCode = code.join('');
+    if (fullCode.length < 6) { setError('Enter the complete 6-digit code.'); return; }
+    setError('');
+    setStep('reset');
+  };
+
+  // Resend code
+  const handleResend = async () => {
+    setLoading(true); setError('');
+    try {
+      await forgotPassword(apiEmail);
+    } catch {
+      setError('Could not resend. Try again.');
+    } finally { setLoading(false); }
+  };
+
+  // Step 3 — Reset password
+  const handleResetPassword = async () => {
+    if (!newPassword) { setError('Enter a new password.'); return; }
+    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return; }
+    setLoading(true); setError('');
+    try {
+      await resetPassword(apiEmail, code.join(''), newPassword);
+      setStep('done');
+    } catch (err) {
+      setError(err?.detail || 'Invalid code or request expired. Try again.');
+    } finally { setLoading(false); }
+  };
+
+  // Strength bar
+  const strength = newPassword.length >= 12 ? 100
+    : newPassword.length >= 8 ? 65
+    : newPassword.length >= 4 ? 35 : 0;
+  const strengthLabel = strength === 100 ? 'Strong'
+    : strength >= 65 ? 'Good'
+    : strength >= 35 ? 'Weak' : '';
+  const strengthColor = strength === 100 ? t.ok
+    : strength >= 65 ? t.warn : t.acc;
+
   const inputBase = {
     width: '100%',
     padding: '13px 13px 13px 40px',
@@ -76,20 +116,21 @@ export default function ForgotPassword() {
 
   const greenBtn = {
     width: '100%',
-    background: 'linear-gradient(135deg,#047857,#059669)',
+    background: loading ? t.bdr : 'linear-gradient(135deg,#047857,#059669)',
     color: '#fff',
     border: 'none',
     borderRadius: 14,
     padding: '13px 16px',
     fontSize: 15,
     fontWeight: 700,
-    cursor: 'pointer',
+    cursor: loading ? 'not-allowed' : 'pointer',
     fontFamily: "'DM Sans', sans-serif",
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    boxShadow: '0 6px 18px rgba(5,150,105,.3)',
+    boxShadow: loading ? 'none' : '0 6px 18px rgba(5,150,105,.3)',
+    opacity: loading ? 0.7 : 1,
   };
 
   const iconBox = (color) => ({
@@ -102,6 +143,12 @@ export default function ForgotPassword() {
     justifyContent: 'center',
     margin: '0 auto 14px',
   });
+
+  const errorEl = error && (
+    <p style={{ fontSize: 13, color: t.acc, textAlign: 'center', marginBottom: 12, marginTop: 0 }}>
+      {error}
+    </p>
+  );
 
   return (
     <div style={{
@@ -233,32 +280,34 @@ export default function ForgotPassword() {
               Enter your email address and we'll send you a verification code to reset your password.
             </div>
 
-            <form onSubmit={handleSubmit} noValidate>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 13, fontWeight: 700, color: t.txt, marginBottom: 6, display: 'block' }}
-                  htmlFor="fp-email">Email Address</label>
-                <div style={{ position: 'relative' }}>
-                  <svg width={15} height={15} viewBox="0 0 24 24" fill="none"
-                    stroke={t.txtL} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                  </svg>
-                  <input
-                    id="fp-email"
-                    style={{ ...inputBase, border: `1.5px solid ${emailError ? t.acc : t.bdr}` }}
-                    type="email"
-                    placeholder="Enter your email address"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
-                    autoComplete="email"
-                  />
-                </div>
-                {emailError && <p style={{ fontSize: 12, color: t.acc, marginTop: 4, marginBottom: 0 }}>{emailError}</p>}
-              </div>
+            {errorEl}
 
-              <button type="submit" style={greenBtn}>Send Reset Code</button>
-            </form>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, color: t.txt, marginBottom: 6, display: 'block' }}
+                htmlFor="fp-email">Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+                  stroke={t.txtL} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+                <input
+                  id="fp-email"
+                  style={inputBase}
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendCode()}
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+
+            <button style={greenBtn} onClick={handleSendCode} disabled={loading}>
+              {loading ? 'Sending…' : 'Send Reset Code'}
+            </button>
 
             <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: t.txtL }}>
               Remember it?{' '}
@@ -281,14 +330,17 @@ export default function ForgotPassword() {
             </div>
             <div style={{ fontSize: 13, color: t.txtL, lineHeight: 1.6, textAlign: 'center', marginBottom: 20 }}>
               We sent a 6-digit code to{' '}
-              <span style={{ color: t.txt, fontWeight: 700 }}>{email}</span>
+              <span style={{ color: t.txt, fontWeight: 700 }}>{apiEmail}</span>
             </div>
+
+            {errorEl}
 
             {/* 6 code boxes */}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
               {code.map((digit, i) => (
                 <input
                   key={i}
+                  id={`code-${i}`}
                   ref={(el) => (codeRefs.current[i] = el)}
                   type="text"
                   inputMode="numeric"
@@ -317,12 +369,14 @@ export default function ForgotPassword() {
             <p style={{ textAlign: 'center', fontSize: 13, color: t.txtL, marginBottom: 20 }}>
               Didn't receive it?{' '}
               <span
-                onClick={() => {}}
-                style={{ color: t.acc, fontWeight: 700, cursor: 'pointer' }}
-              >Resend code</span>
+                onClick={handleResend}
+                style={{ color: t.acc, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
+              >{loading ? 'Sending…' : 'Resend code'}</span>
             </p>
 
-            <button style={greenBtn} onClick={() => setStep('reset')}>Verify Code</button>
+            <button style={greenBtn} onClick={handleVerifyCode} disabled={loading}>
+              Verify Code
+            </button>
           </>
         )}
 
@@ -342,6 +396,8 @@ export default function ForgotPassword() {
               Your new password must be at least 8 characters.
             </div>
 
+            {errorEl}
+
             {/* New Password */}
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 13, fontWeight: 700, color: t.txt, marginBottom: 6, display: 'block' }}>
@@ -358,7 +414,7 @@ export default function ForgotPassword() {
                   type="password"
                   placeholder="Enter new password"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => { setNewPassword(e.target.value); setError(''); }}
                   autoComplete="new-password"
                 />
               </div>
@@ -380,7 +436,7 @@ export default function ForgotPassword() {
                   type="password"
                   placeholder="Repeat your password"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
                   autoComplete="new-password"
                 />
               </div>
@@ -390,14 +446,24 @@ export default function ForgotPassword() {
             <div style={{ marginBottom: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: t.txtL }}>Password strength</span>
-                <span style={{ fontSize: 11, color: t.ok, fontWeight: 700 }}>Strong</span>
+                <span style={{ fontSize: 11, color: strengthColor, fontWeight: 700 }}>{strengthLabel}</span>
               </div>
               <div style={{ background: t.bdr, height: 5, borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ width: '80%', height: '100%', background: 'linear-gradient(90deg,#047857,#059669)', borderRadius: 999 }} />
+                <div style={{
+                  width: `${strength}%`,
+                  height: '100%',
+                  background: strength === 100
+                    ? 'linear-gradient(90deg,#047857,#059669)'
+                    : `linear-gradient(90deg,${strengthColor},${strengthColor})`,
+                  borderRadius: 999,
+                  transition: 'width 0.3s ease',
+                }} />
               </div>
             </div>
 
-            <button style={greenBtn} onClick={() => setStep('done')}>Reset Password</button>
+            <button style={greenBtn} onClick={handleResetPassword} disabled={loading}>
+              {loading ? 'Resetting…' : 'Reset Password'}
+            </button>
           </>
         )}
 
