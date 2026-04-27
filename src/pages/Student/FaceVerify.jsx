@@ -74,7 +74,7 @@ export default function FaceVerify() {
   const handleNotifyInstructor = async () => {
     if (!sessionInfo?.id) return;
     try {
-      await api.post('/attendance/notify-instructor', { session_id: sessionInfo.id, reason: 'face_failed' });
+      await api.post('/attendance/notify-instructor', { session_id: sessionInfo.id, reason: 'camera_error' });
     } catch {
       // best-effort
     }
