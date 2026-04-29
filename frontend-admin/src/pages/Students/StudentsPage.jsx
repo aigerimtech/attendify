@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getStudents, toggleUserStatus } from '../../services/adminService.js'
+import { getStudents, toggleUserStatus, deleteStudent } from '../../services/adminService.js'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -10,30 +10,6 @@ function fmtDate(iso) {
   return `${d}/${m}/${y}`
 }
 
-function faceBadge(n) {
-  const configs = {
-    3: { bg: 'var(--green-light)', color: 'var(--green)',   border: '#6ee7b7' },
-    2: { bg: '#fff7ed',            color: '#ea580c',        border: '#fed7aa' },
-    1: { bg: '#fff7ed',            color: '#ea580c',        border: '#fed7aa' },
-    0: { bg: 'var(--rose-light)',  color: 'var(--rose)',    border: '#fecdd3' },
-  }
-  const c = configs[n] ?? configs[0]
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 9px', borderRadius: 99,
-      fontSize: 12, fontWeight: 700,
-      background: c.bg, color: c.color,
-      border: `1px solid ${c.border}`,
-    }}>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-        <path d="M21 15l-5-5L5 21"/>
-      </svg>
-      {n}/3
-    </span>
-  )
-}
 
 function statusBadge(active) {
   return (
@@ -79,6 +55,8 @@ export default function StudentsPage() {
   const [students, setStudents] = useState([])
   const [loading, setLoading]   = useState(true)
   const [toggling, setToggling] = useState(null) // id being toggled
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -99,6 +77,22 @@ export default function StudentsPage() {
       await load()
     } finally {
       setToggling(null)
+    }
+  }
+
+  function handleDelete(student) {
+    setDeleteTarget(student)
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    try {
+      await deleteStudent(deleteTarget.id)
+      setDeleteTarget(null)
+      await load()
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -154,15 +148,16 @@ export default function StudentsPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
             <thead>
-              <tr style={{ background: '#3730a3' }}>
-                {['Name', 'Email', 'Student ID', 'Dept · Duration', 'Enrolled', 'Face', 'Status', 'Actions'].map(h => (
+              <tr style={{ background: '#eef2ff' }}>
+                {['Name', 'Email', 'Student ID', 'Dept · Duration', 'Enrolled', 'Face Setup', 'Status', 'Actions'].map(h => (
                   <th key={h} style={{
                     padding: '12px 16px',
                     textAlign: 'left',
                     fontSize: 12, fontWeight: 700,
-                    color: '#fff',
+                    color: '#3730a3',
                     letterSpacing: '0.04em',
                     whiteSpace: 'nowrap',
+                    borderBottom: '2px solid #c7d2fe',
                   }}>
                     {h}
                   </th>
@@ -205,9 +200,21 @@ export default function StudentsPage() {
                       {fmtDate(s.enroll_date)}
                     </td>
 
-                    {/* Face */}
+                    {/* Face Setup */}
                     <td style={{ padding: '13px 16px' }}>
-                      {faceBadge(s.face_photos_count)}
+                      {s.face_photos_count >= 3
+                        ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#059669' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Complete
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#e11d48' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            Pending
+                          </span>
+                        )
+                      }
                     </td>
 
                     {/* Status */}
@@ -217,19 +224,37 @@ export default function StudentsPage() {
 
                     {/* Actions */}
                     <td style={{ padding: '13px 16px' }}>
-                      <button
-                        disabled={toggling === s.id}
-                        onClick={() => handleToggle(s)}
-                        style={{
-                          border: 'none', background: 'none',
-                          fontSize: 13, fontWeight: 600, cursor: toggling === s.id ? 'wait' : 'pointer',
-                          color: s.is_active ? 'var(--rose)' : 'var(--green)',
-                          opacity: toggling === s.id ? 0.5 : 1,
-                          padding: '3px 0',
-                        }}
-                      >
-                        {toggling === s.id ? '…' : s.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <button
+                          disabled={toggling === s.id}
+                          onClick={() => handleToggle(s)}
+                          style={{
+                            border: 'none', background: 'none',
+                            fontSize: 13, fontWeight: 600,
+                            cursor: toggling === s.id ? 'wait' : 'pointer',
+                            color: s.is_active ? 'var(--rose)' : 'var(--green)',
+                            opacity: toggling === s.id ? 0.5 : 1,
+                            padding: '3px 0',
+                          }}
+                        >
+                          {toggling === s.id ? '…' : s.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <span style={{ color: 'var(--bdr)', fontSize: 16 }}>|</span>
+                        <button
+                          disabled={toggling === s.id}
+                          onClick={() => handleDelete(s)}
+                          style={{
+                            border: 'none', background: 'none',
+                            fontSize: 13, fontWeight: 600,
+                            cursor: toggling === s.id ? 'wait' : 'pointer',
+                            color: '#94a3b8',
+                            opacity: toggling === s.id ? 0.5 : 1,
+                            padding: '3px 0',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -250,12 +275,97 @@ export default function StudentsPage() {
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <span style={{ fontSize: 12, color: 'var(--pri)', fontWeight: 500 }}>
-              Face column shows the number of registered face photos (3 required for attendance verification).
-              Students with 0/3 cannot use face check-in.
+              Students with pending face setup cannot access the dashboard. On first login they are redirected to register their face before accessing schedule, attendance, or QR check-in.
             </span>
           </div>
         )}
       </div>
+
+      {deleteTarget && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(15,12,40,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20,
+        }}
+          onClick={() => !deleteLoading && setDeleteTarget(null)}
+        >
+          <div style={{
+            background: '#fff', borderRadius: 16,
+            border: '1px solid var(--bdr)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+            padding: '28px 28px 24px',
+            maxWidth: 420, width: '100%',
+          }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div style={{
+              width: 48, height: 48, borderRadius: 12,
+              background: 'var(--rose-light)',
+              border: '1px solid #fecdd3',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: 16,
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--rose)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/>
+                <path d="M9 6V4h6v2"/>
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--txt)', marginBottom: 8 }}>
+              Delete Student Account
+            </h2>
+
+            {/* Body */}
+            <p style={{ fontSize: 14, color: 'var(--txt-muted)', lineHeight: 1.6, marginBottom: 6 }}>
+              You are about to permanently delete the account for:
+            </p>
+            <div style={{
+              background: '#f8f9ff', border: '1px solid var(--bdr)',
+              borderRadius: 9, padding: '10px 14px', marginBottom: 8,
+            }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt)', margin: 0 }}>{deleteTarget.name}</p>
+              <p style={{ fontSize: 12, color: 'var(--txt-muted)', margin: '2px 0 0' }}>{deleteTarget.email} · {deleteTarget.student_id}</p>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--rose)', fontWeight: 600, marginBottom: 24 }}>
+              This will delete all attendance records and face data. This action cannot be undone.
+            </p>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                style={{
+                  padding: '9px 20px', borderRadius: 9,
+                  border: '1.5px solid var(--bdr)',
+                  background: '#fff', color: 'var(--txt-muted)',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteLoading}
+                style={{
+                  padding: '9px 20px', borderRadius: 9, border: 'none',
+                  background: deleteLoading ? '#fecdd3' : 'var(--rose)',
+                  color: '#fff', fontSize: 14, fontWeight: 700,
+                  cursor: deleteLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(244,63,94,0.25)',
+                }}
+              >
+                {deleteLoading ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

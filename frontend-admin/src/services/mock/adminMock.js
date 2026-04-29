@@ -114,6 +114,13 @@ export async function createStudent(data) {
   return newStudent
 }
 
+export async function deleteStudent(id) {
+  await delay()
+  const idx = studentStore.findIndex(x => x.id === id)
+  if (idx === -1) throw new Error('Student not found')
+  studentStore.splice(idx, 1)
+}
+
 // ── Instructors ───────────────────────────────────────────────────────────────
 
 const INSTRUCTORS = [
@@ -125,7 +132,6 @@ const INSTRUCTORS = [
     faculty: 'Engineering',
     department: 'Computer Science',
     title: 'Associate Professor',
-    contract_start_date: '2019-09-01',
     is_active: true,
   },
   {
@@ -136,7 +142,6 @@ const INSTRUCTORS = [
     faculty: 'Engineering',
     department: 'Software Engineering',
     title: 'Professor',
-    contract_start_date: '2015-02-01',
     is_active: true,
   },
   {
@@ -147,7 +152,6 @@ const INSTRUCTORS = [
     faculty: 'Business',
     department: 'Management',
     title: 'Lecturer',
-    contract_start_date: '2022-09-01',
     is_active: false,
   },
 ]
@@ -171,10 +175,16 @@ export async function createInstructor(data) {
     faculty: data.faculty,
     department: data.department,
     title: data.title ?? 'Lecturer',
-    contract_start_date: data.contract_start_date ?? now,
     is_active: true,
   }
   instructorStore.push(newInstructor)
   nextInstructorId++
   return newInstructor
+}
+
+export async function deleteInstructor(id) {
+  await delay()
+  const idx = instructorStore.findIndex(x => x.id === id)
+  if (idx === -1) throw new Error('Instructor not found')
+  instructorStore.splice(idx, 1)
 }

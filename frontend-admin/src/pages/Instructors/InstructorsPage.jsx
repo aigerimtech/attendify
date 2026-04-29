@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getInstructors, toggleUserStatus } from '../../services/adminService.js'
+import { getInstructors, toggleUserStatus, deleteInstructor } from '../../services/adminService.js'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function fmtDate(iso) {
-  if (!iso) return '—'
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
-}
 
 function statusBadge(active) {
   return (
@@ -27,7 +22,7 @@ function statusBadge(active) {
 
 // ── skeleton ──────────────────────────────────────────────────────────────────
 
-const COLS = 8
+const COLS = 7
 
 function SkeletonRow({ shade }) {
   return (
@@ -54,6 +49,8 @@ export default function InstructorsPage() {
   const [instructors, setInstructors] = useState([])
   const [loading, setLoading]         = useState(true)
   const [toggling, setToggling]       = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -74,6 +71,22 @@ export default function InstructorsPage() {
       await load()
     } finally {
       setToggling(null)
+    }
+  }
+
+  function handleDelete(instructor) {
+    setDeleteTarget(instructor)
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    try {
+      await deleteInstructor(deleteTarget.id)
+      setDeleteTarget(null)
+      await load()
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -125,7 +138,7 @@ export default function InstructorsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
             <thead>
               <tr style={{ background: '#3730a3' }}>
-                {['Name', 'Email', 'Instructor ID', 'Department', 'Title', 'Contract Start', 'Status', 'Actions'].map(h => (
+                {['Name', 'Email', 'Instructor ID', 'Department', 'Title', 'Status', 'Actions'].map(h => (
                   <th key={h} style={{
                     padding: '12px 16px',
                     textAlign: 'left',
@@ -174,11 +187,6 @@ export default function InstructorsPage() {
                       {ins.title}
                     </td>
 
-                    {/* Contract Start */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--txt-muted)', whiteSpace: 'nowrap' }}>
-                      {fmtDate(ins.contract_start_date)}
-                    </td>
-
                     {/* Status */}
                     <td style={{ padding: '13px 16px' }}>
                       {statusBadge(ins.is_active)}
@@ -186,20 +194,37 @@ export default function InstructorsPage() {
 
                     {/* Actions */}
                     <td style={{ padding: '13px 16px' }}>
-                      <button
-                        disabled={toggling === ins.id}
-                        onClick={() => handleToggle(ins)}
-                        style={{
-                          border: 'none', background: 'none',
-                          fontSize: 13, fontWeight: 600,
-                          cursor: toggling === ins.id ? 'wait' : 'pointer',
-                          color: ins.is_active ? 'var(--rose)' : 'var(--green)',
-                          opacity: toggling === ins.id ? 0.5 : 1,
-                          padding: '3px 0',
-                        }}
-                      >
-                        {toggling === ins.id ? '…' : ins.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <button
+                          disabled={toggling === ins.id}
+                          onClick={() => handleToggle(ins)}
+                          style={{
+                            border: 'none', background: 'none',
+                            fontSize: 13, fontWeight: 600,
+                            cursor: toggling === ins.id ? 'wait' : 'pointer',
+                            color: ins.is_active ? 'var(--rose)' : 'var(--green)',
+                            opacity: toggling === ins.id ? 0.5 : 1,
+                            padding: '3px 0',
+                          }}
+                        >
+                          {toggling === ins.id ? '…' : ins.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <span style={{ color: 'var(--bdr)', fontSize: 16 }}>|</span>
+                        <button
+                          disabled={toggling === ins.id}
+                          onClick={() => handleDelete(ins)}
+                          style={{
+                            border: 'none', background: 'none',
+                            fontSize: 13, fontWeight: 600,
+                            cursor: toggling === ins.id ? 'wait' : 'pointer',
+                            color: '#94a3b8',
+                            opacity: toggling === ins.id ? 0.5 : 1,
+                            padding: '3px 0',
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -228,6 +253,92 @@ export default function InstructorsPage() {
           </div>
         )}
       </div>
+
+      {deleteTarget && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(15,12,40,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20,
+        }}
+          onClick={() => !deleteLoading && setDeleteTarget(null)}
+        >
+          <div style={{
+            background: '#fff', borderRadius: 16,
+            border: '1px solid var(--bdr)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+            padding: '28px 28px 24px',
+            maxWidth: 420, width: '100%',
+          }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div style={{
+              width: 48, height: 48, borderRadius: 12,
+              background: 'var(--rose-light)',
+              border: '1px solid #fecdd3',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: 16,
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--rose)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/>
+                <path d="M9 6V4h6v2"/>
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--txt)', marginBottom: 8 }}>
+              Delete Instructor Account
+            </h2>
+
+            {/* Body */}
+            <p style={{ fontSize: 14, color: 'var(--txt-muted)', lineHeight: 1.6, marginBottom: 6 }}>
+              You are about to permanently delete the account for:
+            </p>
+            <div style={{
+              background: '#f8f9ff', border: '1px solid var(--bdr)',
+              borderRadius: 9, padding: '10px 14px', marginBottom: 8,
+            }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt)', margin: 0 }}>{deleteTarget.name}</p>
+              <p style={{ fontSize: 12, color: 'var(--txt-muted)', margin: '2px 0 0' }}>{deleteTarget.email} · {deleteTarget.instructor_id}</p>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--rose)', fontWeight: 600, marginBottom: 24 }}>
+              This will remove the instructor account permanently. Sessions and attendance records linked to this instructor may be affected. This action cannot be undone.
+            </p>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                style={{
+                  padding: '9px 20px', borderRadius: 9,
+                  border: '1.5px solid var(--bdr)',
+                  background: '#fff', color: 'var(--txt-muted)',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteLoading}
+                style={{
+                  padding: '9px 20px', borderRadius: 9, border: 'none',
+                  background: deleteLoading ? '#fecdd3' : 'var(--rose)',
+                  color: '#fff', fontSize: 14, fontWeight: 700,
+                  cursor: deleteLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(244,63,94,0.25)',
+                }}
+              >
+                {deleteLoading ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

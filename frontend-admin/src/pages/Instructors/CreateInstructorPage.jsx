@@ -114,7 +114,7 @@ function ErrorMsg({ msg }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-const INIT = { name: '', email: '', faculty: '', department: '', title: '', contract_start_date: '' }
+const INIT = { name: '', email: '', faculty: '', department: '', title: '' }
 
 export default function CreateInstructorPage() {
   const navigate = useNavigate()
@@ -140,7 +140,6 @@ export default function CreateInstructorPage() {
     if (!form.faculty)       e.faculty = 'Please select a faculty'
     if (!form.department)    e.department = 'Please select a department'
     if (!form.title)         e.title = 'Please select a title'
-    if (!form.contract_start_date) e.contract_start_date = 'Contract start date is required'
     return e
   }
 
@@ -264,27 +263,19 @@ export default function CreateInstructorPage() {
               <ErrorMsg msg={errors.department} />
             </Field>
 
-            <Field label="Title / Rank" required>
-              <SelectInput
-                value={form.title}
-                onChange={e => set('title', e.target.value)}
-                error={errors.title}
-              >
-                <option value="">Select title…</option>
-                {TITLES.map(t => <option key={t} value={t}>{t}</option>)}
-              </SelectInput>
-              <ErrorMsg msg={errors.title} />
-            </Field>
-
-            <Field label="Contract Start Date" required>
-              <TextInput
-                type="date"
-                value={form.contract_start_date}
-                onChange={e => set('contract_start_date', e.target.value)}
-                error={errors.contract_start_date}
-              />
-              <ErrorMsg msg={errors.contract_start_date} />
-            </Field>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <Field label="Title / Rank" required>
+                <SelectInput
+                  value={form.title}
+                  onChange={e => set('title', e.target.value)}
+                  error={errors.title}
+                >
+                  <option value="">Select title…</option>
+                  {TITLES.map(t => <option key={t} value={t}>{t}</option>)}
+                </SelectInput>
+                <ErrorMsg msg={errors.title} />
+              </Field>
+            </div>
           </div>
 
           {/* Info notice */}
