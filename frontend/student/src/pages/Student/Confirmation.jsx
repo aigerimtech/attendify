@@ -1,29 +1,34 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { mockSession } from '../../data/mockData';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function Confirmation() {
-  const navigate = useNavigate();
-  const { theme: t } = useTheme();
+  const navigate      = useNavigate();
+  const locationState = useLocation();
+  const { theme: t }  = useTheme();
 
-  // 'loading' | 'ready' | 'denied'
-  const [geoState, setGeoState] = useState('loading');
-  const [coords, setCoords] = useState(null);
+  const session = locationState.state?.session ?? {};
+
+  // Geolocation — only attempted when location is 'Current Location'
+  const needsGeo = session.location === 'Current Location';
+  const [geoState, setGeoState] = useState(needsGeo ? 'loading' : 'skip');
+  const [coords,   setCoords]   = useState(null);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setGeoState('denied');
-      return;
-    }
+    if (!needsGeo) return;
+    if (!navigator.geolocation) { setGeoState('denied'); return; }
     navigator.geolocation.getCurrentPosition(
-      ({ coords: { latitude, longitude } }) => {
-        setCoords({ lat: latitude, lng: longitude });
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setGeoState('ready');
       },
       () => setGeoState('denied'),
     );
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Decide whether to show the location card at all
+  const hasLocation = !!session.location;
+  const showMap     = geoState === 'ready' && coords !== null;
 
   return (
     <div style={{ background: t.bg, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -33,32 +38,18 @@ export default function Confirmation() {
         background: t.hdr, borderBottom: `1px solid ${t.bdr}`,
         display: 'flex', alignItems: 'center', padding: '14px 18px', flexShrink: 0,
       }}>
-        <button
-          type="button"
-          onClick={() => navigate('/student/dashboard')}
-          aria-label="Close"
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center',
-          }}
-        >
+        <button type="button" onClick={() => navigate('/student/dashboard')} aria-label="Close"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center' }}>
           <XIcon color={t.txt} />
         </button>
-        <h1 style={{
-          flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800,
-          color: t.txt, margin: 0, letterSpacing: -0.3,
-        }}>
+        <h1 style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800, color: t.txt, margin: 0, letterSpacing: -0.3 }}>
           Confirmation
         </h1>
-        {/* Spacer mirrors the close button so the title stays centred */}
         <div style={{ width: 40 }} />
       </header>
 
       {/* ── Body ── */}
-      <div style={{
-        flex: 1, overflowY: 'auto', padding: '28px 20px',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
-      }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
 
         {/* Success circle */}
         <div aria-hidden="true" style={{
@@ -80,23 +71,17 @@ export default function Confirmation() {
         </div>
 
         {/* Session details card */}
-        <div style={{
-          background: t.card, borderRadius: 20, padding: '18px 20px',
-          border: `1px solid ${t.bdr}`, boxShadow: t.shMd, width: '100%',
-        }}>
-          {/* Card header row */}
+        <div style={{ background: t.card, borderRadius: 20, padding: '18px 20px', border: `1px solid ${t.bdr}`, boxShadow: t.shMd, width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: t.txtM }}>
-              CURRENT SESSION
-            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: t.txtM }}>CURRENT SESSION</span>
             <GraduationCapIcon color={t.pri} />
           </div>
 
           <p style={{ fontSize: 16, fontWeight: 800, color: t.txt, margin: '0 0 4px', letterSpacing: -0.3 }}>
-            {mockSession.courseCode}: {mockSession.courseName}
+            {session.course_name ?? '—'}
           </p>
           <p style={{ fontSize: 13, color: t.txtL, margin: '0 0 16px' }}>
-            {mockSession.instructor}
+            {session.instructor_name ?? ''}
           </p>
 
           <div style={{ height: 1, background: t.bdr, marginBottom: 16 }} />
@@ -108,9 +93,7 @@ export default function Confirmation() {
                 <CalendarIcon color={t.txtL} />
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.6, color: t.txtL }}>DATE</span>
               </div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: t.txt, margin: 0 }}>
-                {mockSession.date}
-              </p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: t.txt, margin: 0 }}>{session.date ?? '—'}</p>
             </div>
             <div style={{ width: 1, background: t.bdr, margin: '0 16px' }} />
             <div style={{ flex: 1 }}>
@@ -118,9 +101,7 @@ export default function Confirmation() {
                 <ClockIcon color={t.txtL} />
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.6, color: t.txtL }}>TIME</span>
               </div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: t.txt, margin: 0 }}>
-                {mockSession.time}
-              </p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: t.txt, margin: 0 }}>{session.time ?? '—'}</p>
             </div>
           </div>
 
@@ -129,10 +110,7 @@ export default function Confirmation() {
           {/* Status row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span aria-hidden="true" style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: t.ok, display: 'inline-block',
-              }} />
+              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: t.ok, display: 'inline-block' }} />
               <span style={{ fontSize: 13, color: t.txtL, fontWeight: 600 }}>Status</span>
             </div>
             <span style={{
@@ -142,47 +120,52 @@ export default function Confirmation() {
               fontSize: 11, fontWeight: 700, color: t.ok,
             }}>
               <SmallCheckIcon color={t.ok} />
-              {mockSession.status}
+              {session.status ?? 'VERIFIED'}
             </span>
           </div>
         </div>
 
-        {/* Location section */}
-        <div style={{
-          background: t.card, borderRadius: 14, padding: '14px 16px',
-          border: `1px solid ${t.bdr}`, width: '100%', boxShadow: t.sh,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <PinIcon color={t.pri} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: t.txt }}>{mockSession.location}</span>
+        {/* Location card — only shown when session has a location */}
+        {hasLocation && (
+          <div style={{ background: t.card, borderRadius: 14, padding: '14px 16px', border: `1px solid ${t.bdr}`, width: '100%', boxShadow: t.sh }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: showMap || (needsGeo && geoState !== 'skip') ? 12 : 0 }}>
+              <PinIcon color={t.pri} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: t.txt }}>
+                {needsGeo ? 'Current Location' : session.location}
+              </span>
+            </div>
+
+            {/* Geo loading */}
+            {needsGeo && geoState === 'loading' && (
+              <div style={{ fontSize: 12, color: t.txtL, padding: '8px 0', textAlign: 'center' }}>
+                Detecting location…
+              </div>
+            )}
+
+            {/* Geo denied */}
+            {needsGeo && geoState === 'denied' && (
+              <div style={{ fontSize: 12, color: t.acc, padding: '8px 0', textAlign: 'center' }}>
+                Location unavailable
+              </div>
+            )}
+
+            {/* Real map */}
+            {showMap && (
+              <iframe
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng - 0.01},${coords.lat - 0.01},${coords.lng + 0.01},${coords.lat + 0.01}&marker=${coords.lat},${coords.lng}`}
+                width="100%"
+                height="150"
+                style={{ borderRadius: 12, border: 'none', display: 'block' }}
+                title="Location map"
+              />
+            )}
           </div>
-          {geoState === 'loading' && (
-            <div style={{ fontSize: 12, color: t.txtL, padding: '8px 0', textAlign: 'center' }}>
-              Detecting location…
-            </div>
-          )}
-          {geoState === 'denied' && (
-            <div style={{ fontSize: 12, color: t.acc, padding: '8px 0', textAlign: 'center' }}>
-              Location unavailable
-            </div>
-          )}
-          {geoState === 'ready' && coords && (
-            <iframe
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng - 0.01},${coords.lat - 0.01},${coords.lng + 0.01},${coords.lat + 0.01}&marker=${coords.lat},${coords.lng}`}
-              width="100%"
-              height="150"
-              style={{ borderRadius: 12, border: 'none', display: 'block' }}
-              title="Location map"
-            />
-          )}
-        </div>
+        )}
       </div>
 
       {/* ── Done button ── */}
       <div style={{ padding: '12px 20px 28px', flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={() => navigate('/student/dashboard')}
+        <button type="button" onClick={() => navigate('/student/dashboard')}
           style={{
             width: '100%',
             background: 'linear-gradient(135deg,#047857,#059669)',
@@ -205,12 +188,10 @@ function XIcon({ color }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 }
-
 function LargeCheckIcon() {
   return (
     <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
@@ -219,7 +200,6 @@ function LargeCheckIcon() {
     </svg>
   );
 }
-
 function GraduationCapIcon({ color }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
@@ -229,29 +209,24 @@ function GraduationCapIcon({ color }) {
     </svg>
   );
 }
-
 function CalendarIcon({ color }) {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
       <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
   );
 }
-
 function ClockIcon({ color }) {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
+      <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
     </svg>
   );
 }
-
 function SmallCheckIcon({ color }) {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
@@ -260,7 +235,6 @@ function SmallCheckIcon({ color }) {
     </svg>
   );
 }
-
 function PinIcon({ color }) {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
