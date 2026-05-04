@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { api } from '../../api/client';
 import { useTheme } from "../../context/ThemeContext";
 
 const STEPS = ['Email', 'Verify', 'Reset', 'Done'];
@@ -25,9 +26,19 @@ export default function ForgotPassword() {
     return true;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (validate()) setStep('code');
+    if (!validate()) return;
+    setLoading(true);
+    setApiError('');
+    try {
+      await api.post('/auth/forgot-password', { email });
+      setStep('code');
+    } catch (err) {
+      setApiError(err.message || 'Failed to send reset code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
   // ────────────────────────────────────────────────────────────
 
@@ -35,6 +46,8 @@ export default function ForgotPassword() {
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
   const codeRefs = useRef([]);
 
   const stepIndex = { email: 0, code: 1, reset: 2, done: 3 };
@@ -58,6 +71,23 @@ export default function ForgotPassword() {
   function handleCodeKeyDown(i, e) {
     if (e.key === 'Backspace' && !code[i] && i > 0) {
       codeRefs.current[i - 1]?.focus();
+    }
+  }
+
+  async function handleReset() {
+    setLoading(true);
+    setApiError('');
+    try {
+      await api.post('/auth/reset-password', {
+        email,
+        code: code.join(''),
+        new_password: newPassword,
+      });
+      setStep('done');
+    } catch (err) {
+      setApiError(err.message || 'Failed to reset password. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -257,7 +287,10 @@ export default function ForgotPassword() {
                 {emailError && <p style={{ fontSize: 12, color: t.acc, marginTop: 4, marginBottom: 0 }}>{emailError}</p>}
               </div>
 
-              <button type="submit" style={greenBtn}>Send Reset Code</button>
+              {apiError && <p style={{ fontSize: 13, color: t.acc, marginBottom: 12, textAlign: 'center' }}>{apiError}</p>}
+              <button type="submit" style={{ ...greenBtn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
+                {loading ? 'Sending…' : 'Send Reset Code'}
+              </button>
             </form>
 
             <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: t.txtL }}>
@@ -322,7 +355,7 @@ export default function ForgotPassword() {
               >Resend code</span>
             </p>
 
-            <button style={greenBtn} onClick={() => setStep('reset')}>Verify Code</button>
+            <button style={greenBtn} onClick={() => { setApiError(''); setStep('reset'); }}>Verify Code</button>
           </>
         )}
 
@@ -397,7 +430,10 @@ export default function ForgotPassword() {
               </div>
             </div>
 
-            <button style={greenBtn} onClick={() => setStep('done')}>Reset Password</button>
+            {apiError && <p style={{ fontSize: 13, color: t.acc, marginBottom: 12, textAlign: 'center' }}>{apiError}</p>}
+            <button style={{ ...greenBtn, opacity: loading ? 0.7 : 1 }} disabled={loading} onClick={handleReset}>
+              {loading ? 'Resetting…' : 'Reset Password'}
+            </button>
           </>
         )}
 

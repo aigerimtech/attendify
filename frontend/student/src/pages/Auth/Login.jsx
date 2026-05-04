@@ -199,6 +199,27 @@ export default function Login() {
           {/* Error */}
           {error && <p style={{ fontSize: 13, color: t.acc, marginBottom: 12, textAlign: 'center' }}>{error}</p>}
 
+          {/* Info banner */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: t.priLL, border: `1px solid ${t.priL}`,
+            borderRadius: 10, padding: '9px 12px', marginBottom: 12,
+          }}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+              stroke={t.pri} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ flexShrink: 0 }}>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span style={{ fontSize: 12, color: t.pri, fontWeight: 600, lineHeight: 1.4 }}>
+              New student? Complete face registration before signing in.{' '}
+              <Link to="/face-setup" style={{ color: t.pri, textDecoration: 'underline', fontWeight: 800 }}>
+                Register Face →
+              </Link>
+            </span>
+          </div>
+
           {/* Submit */}
           <IndigoBtn>Sign In</IndigoBtn>
 

@@ -25,21 +25,19 @@ export default function Dashboard() {
   const location = useLocation();
   const { theme: t, isDark } = useTheme();
   const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [bannerVisible, setBannerVisible] = useState(true);
   const [popupOpen, setPopupOpen] = useState(false);
   const avatarRef = useRef(null);
 
-  const currentStudent = JSON.parse(localStorage.getItem('currentStudent'));
-
-  // Auth guard — must be before any early return, after all hooks
-  useEffect(() => {
-    if (!currentStudent) navigate('/login');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const currentStudent = JSON.parse(localStorage.getItem('currentStudent') || 'null');
 
   useEffect(() => {
+    if (!currentStudent) { navigate('/login'); return; }
     api.get('/students/me/dashboard')
-      .then((data) => setDashboard(data))
-      .catch(() => setDashboard(null));
+      .then(data => setDashboard(data))
+      .catch(() => setDashboard(null))
+      .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close popup when clicking outside
@@ -55,10 +53,16 @@ export default function Dashboard() {
   }, [popupOpen]);
 
   if (!currentStudent) return null;
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: t.bg }}>
+      <p style={{ fontSize: 14, color: t.txtL, fontFamily: "'DM Sans', sans-serif" }}>Loading...</p>
+    </div>
+  );
 
   const todaysClasses = dashboard?.enrolled_courses ?? [];
   const recentActivity = dashboard?.recent_activity ?? [];
-  const initials = currentStudent.name.split(' ').map((w) => w[0]).join('').toUpperCase();
+  const displayName = currentStudent.full_name ?? currentStudent.name ?? '';
+  const initials = (displayName).split(' ').map((w) => w[0]).join('').toUpperCase();
 
   function handleLogout() {
     localStorage.removeItem('currentStudent');
@@ -124,7 +128,7 @@ export default function Dashboard() {
               }}
             >
               {currentStudent.avatar
-                ? <img src={currentStudent.avatar} alt={currentStudent.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                ? <img src={currentStudent.avatar} alt={displayName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                 : <span>{initials}</span>}
             </button>
 
@@ -136,7 +140,7 @@ export default function Dashboard() {
                 minWidth: 200, overflow: 'hidden',
               }}>
                 <div style={{ padding: '14px 16px', borderBottom: `1px solid ${t.bdr}` }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: t.txt, margin: 0 }}>{currentStudent.name}</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: t.txt, margin: 0 }}>{displayName}</p>
                   <p style={{ fontSize: 12, color: t.txtL, margin: '2px 0 0' }}>{currentStudent.email}</p>
                 </div>
                 <button type="button" role="menuitem"
@@ -188,7 +192,7 @@ export default function Dashboard() {
         <div>
           <p style={{ fontSize: 13, color: t.txtL, margin: 0 }}>Good morning</p>
           <h2 style={{ fontSize: 21, fontWeight: 800, color: t.txt, letterSpacing: -0.5, margin: '2px 0' }}>
-            {currentStudent.name}
+            {displayName}
           </h2>
           <p style={{ fontSize: 13, color: t.txtL, margin: 0 }}>
             You have{' '}
@@ -366,12 +370,12 @@ export default function Dashboard() {
             }}>View All</button>
           </div>
 
-          {recentActivity.map((item) => {
+          {recentActivity.map((item, idx) => {
             const color = COURSE_COLORS[item.code] ?? '#2563eb';
-            const abbr = item.code.slice(0, 2);
+            const abbr = (item.code ?? '').slice(0, 2);
             const present = item.status === 'Present';
             return (
-              <div key={item.code} style={{
+              <div key={item.code ?? idx} style={{
                 background: t.card,
                 borderRadius: 14,
                 padding: '13px 15px',

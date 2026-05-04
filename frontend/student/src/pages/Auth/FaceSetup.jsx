@@ -1,323 +1,288 @@
+import './FaceSetup.css';
 import { useRef, useState, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Webcam from 'react-webcam';
+import { api } from '../../api/client';
 import { useTheme } from "../../context/ThemeContext";
-import { IndigoBtn } from "../../components/shared/IndigoBtn";
 
-const WEBCAM_CONSTRAINTS = {
-  width: 280,
-  height: 280,
-  facingMode: 'user',
-};
+const WEBCAM_CONSTRAINTS = { width: 280, height: 280, facingMode: 'user' };
+const TOTAL = 3;
+
+async function dataUrlToBlob(dataUrl) {
+  const res = await fetch(dataUrl);
+  return res.blob();
+}
 
 export default function FaceSetup() {
   const navigate = useNavigate();
   const { theme: t } = useTheme();
   const webcamRef = useRef(null);
 
-  const [photo, setPhoto] = useState(null);
+  const [photos,          setPhotos]          = useState([]); // accepted: { dataUrl, blob }
+  const [currentCapture,  setCurrentCapture]  = useState(null); // pending: dataUrl string
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [submitting,      setSubmitting]      = useState(false);
+  const [submitError,     setSubmitError]     = useState('');
+
+  const step        = photos.length;           // 0‥2: which photo we're collecting
+  const allCaptured = step === TOTAL;
 
   const handleCapture = useCallback(() => {
     const screenshot = webcamRef.current?.getScreenshot();
-    if (screenshot) setPhoto(screenshot);
+    if (screenshot) setCurrentCapture(screenshot);
   }, []);
 
-  const handleRetake = () => setPhoto(null);
+  const handleRetake = () => setCurrentCapture(null);
 
-  const handleContinue = () => {
-    navigate('/login', { state: { successMessage: 'Registration complete! Please sign in.' } });
+  const handleUseThis = async () => {
+    const blob = await dataUrlToBlob(currentCapture);
+    setPhotos((prev) => [...prev, { dataUrl: currentCapture, blob }]);
+    setCurrentCapture(null);
   };
 
-  const handleCameraError = () => {
-    setPermissionDenied(true);
+  const handleRemovePhoto = (index) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setSubmitError('');
   };
 
-  const steps = [
-    { label: 'Register', done: true, active: false, num: 1 },
-    { label: 'Face Setup', done: false, active: true, num: 2 },
-    { label: 'Done', done: false, active: false, num: 3 },
-  ];
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const fd = new FormData();
+      photos.forEach(({ blob }) => fd.append('photos', blob, 'photo.jpg'));
+      await api.form('/face/enroll', fd);
+      const stored = JSON.parse(localStorage.getItem('currentStudent') || 'null');
+      if (stored) {
+        stored.face_enrolled = true;
+        localStorage.setItem('currentStudent', JSON.stringify(stored));
+      }
+      navigate('/student/dashboard');
+    } catch (err) {
+      setSubmitError(err.message || 'Enrollment failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div style={{
-      background: t.bgAlt,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '28px 22px 32px',
-      overflowY: 'auto',
-      flex: 1,
-      minHeight: '100vh',
-    }}>
+    <div className="fs-root">
+      <div className="fs-content">
 
-      {/* Step indicator */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-        width: '100%',
-      }}>
-        {steps.map((s, i) => (
-          <div key={s.label} style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-              <div style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                background: s.done ? t.ok : s.active ? t.pri : t.bdr,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 13,
-                fontWeight: 800,
-                color: s.done || s.active ? '#fff' : t.txtL,
-              }}>
-                {s.done ? (
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none"
-                    stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
+        {/* Back button */}
+        <div style={{ width: '100%', marginBottom: 14 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 700, color: '#2563eb',
+              fontFamily: "'DM Sans', sans-serif", padding: 0,
+            }}
+          >
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 5l-7 7 7 7" />
+            </svg>
+            Back to Login
+          </button>
+        </div>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div className="fs-app-name">Face Registration Required</div>
+          <div className="fs-tagline" style={{ lineHeight: 1.5 }}>
+            Please take 3 clear photos to enable attendance tracking
+          </div>
+        </div>
+
+        {/* Step counter pill */}
+        <div style={{ textAlign: 'center', marginBottom: 18 }}>
+          <span style={{
+            fontSize: 13, fontWeight: 700,
+            background: allCaptured ? '#f0fdf4' : '#eff6ff',
+            color: allCaptured ? '#15803d' : '#2563eb',
+            borderRadius: 20, padding: '5px 16px',
+            border: `1px solid ${allCaptured ? '#bbf7d0' : '#bfdbfe'}`,
+          }}>
+            {allCaptured ? 'All 3 photos ready' : `Photo ${step + 1} of ${TOTAL}`}
+          </span>
+        </div>
+
+        {/* Card */}
+        <div className="fs-card">
+          <p className="fs-subtitle" style={{ marginBottom: allCaptured ? 8 : 16 }}>
+            {allCaptured
+              ? 'Review your photos below, then submit to complete enrollment.'
+              : [
+                  'Look straight at the camera',
+                  'Slowly turn your head slightly to the left',
+                  'Slowly turn your head slightly to the right',
+                ][step]}
+          </p>
+
+          {/* Permission denied */}
+          {permissionDenied && (
+            <div className="fs-permission-error" role="alert">
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              Camera access denied. Please allow camera access in your browser settings.
+            </div>
+          )}
+
+          {/* Submit error */}
+          {submitError && (
+            <div className="fs-permission-error" role="alert">
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              {submitError}
+            </div>
+          )}
+
+          {/* Camera + capture — only while collecting */}
+          {!allCaptured && !permissionDenied && (
+            <>
+              <div className="fs-camera-wrap">
+                <div className="fs-camera-outer">
+                  <div className={`fs-camera-glow${currentCapture ? ' fs-camera-glow-captured' : ''}`} />
+                  <div className={`fs-camera-ring${currentCapture ? ' fs-camera-ring-captured' : ''}`}>
+                    {currentCapture ? (
+                      <>
+                        <img src={currentCapture} alt="Captured" className="fs-camera-preview" />
+                        <div className="fs-capture-overlay">
+                          <div className="fs-capture-badge">
+                            <svg width={24} height={24} viewBox="0 0 24 24" fill="none"
+                              stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <Webcam
+                        ref={webcamRef}
+                        audio={false}
+                        screenshotFormat="image/jpeg"
+                        videoConstraints={WEBCAM_CONSTRAINTS}
+                        onUserMediaError={() => setPermissionDenied(true)}
+                        mirrored
+                        className="fs-webcam"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="fs-btn-group">
+                {currentCapture ? (
+                  <>
+                    <button type="button" className="fs-retake-btn" onClick={handleRetake}>
+                      Retake
+                    </button>
+                    <button type="button" className="fs-continue-btn" onClick={handleUseThis}>
+                      Use This
+                    </button>
+                  </>
                 ) : (
-                  <span>{s.num}</span>
+                  <button type="button" className="fs-capture-btn" onClick={handleCapture}>
+                    <svg width={17} height={17} viewBox="0 0 24 24" fill="none"
+                      stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    Take Photo
+                  </button>
                 )}
               </div>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: s.done ? t.ok : s.active ? t.pri : t.txtL,
-              }}>{s.label}</span>
-            </div>
-            {i < steps.length - 1 && (
-              <div style={{
-                width: 44,
-                height: 2,
-                margin: '0 6px',
-                marginBottom: 18,
-                background: steps[i].done ? t.ok : t.bdr,
-                borderRadius: 999,
-              }} />
-            )}
-          </div>
-        ))}
-      </div>
+            </>
+          )}
 
-      {/* Card */}
-      <div style={{
-        background: t.card,
-        borderRadius: 24,
-        padding: 24,
-        width: '100%',
-        border: `1px solid ${t.bdr}`,
-        boxShadow: t.shMd,
-      }}>
-        <div style={{ fontWeight: 800, fontSize: 18, color: t.txt, textAlign: 'center', marginBottom: 6 }}>
-          Set Up Face Recognition
-        </div>
-        <div style={{ fontSize: 13, color: t.txtL, textAlign: 'center', lineHeight: 1.6, marginBottom: 22 }}>
-          We need to scan your face to verify your identity during attendance.
-        </div>
-
-        {/* Permission denied alert */}
-        {permissionDenied && (
-          <div style={{
-            background: t.accL,
-            border: `1.5px solid rgba(244,63,94,.2)`,
-            borderRadius: 12,
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            marginBottom: 16,
-            fontSize: 13,
-            color: t.acc,
-            fontWeight: 600,
-          }} role="alert">
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none"
-              stroke={t.acc} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            Camera access denied. Please allow camera access in your browser settings.
-          </div>
-        )}
-
-        {/* Camera circle */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            {/* Glow ring */}
-            <div style={{
-              position: 'absolute',
-              inset: -7,
-              borderRadius: '50%',
-              border: `3px solid ${photo ? 'rgba(5,150,105,.25)' : t.priL}`,
-              transition: 'border-color .4s',
-              pointerEvents: 'none',
-            }} />
-            {/* Camera circle */}
-            <div style={{
-              width: 190,
-              height: 190,
-              borderRadius: '50%',
-              background: '#080718',
-              border: `4px solid ${photo ? t.ok : t.pri}`,
-              transition: 'border-color .3s',
-              overflow: 'hidden',
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              {permissionDenied ? (
-                <svg width={54} height={54} viewBox="0 0 24 24" fill="none"
-                  stroke="#334155" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <path d="M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
-                </svg>
-              ) : photo ? (
-                <>
-                  <img
-                    src={photo}
-                    alt="Captured face"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'rgba(5,150,105,.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
+          {/* Photo strip — previews + empty slots */}
+          {(photos.length > 0 || allCaptured) && (
+            <div style={{ marginTop: allCaptured ? 4 : 20 }}>
+              <p style={{
+                fontSize: 10, fontWeight: 700, color: '#94a3b8',
+                letterSpacing: 1.1, textTransform: 'uppercase', marginBottom: 12,
+              }}>
+                Captured Photos
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                {photos.map(({ dataUrl }, idx) => (
+                  <div key={idx} style={{ position: 'relative', display: 'inline-block' }}>
+                    <img
+                      src={dataUrl}
+                      alt={`Photo ${idx + 1}`}
+                      style={{
+                        width: 68, height: 68, borderRadius: 12,
+                        objectFit: 'cover', border: '2px solid #16a34a', display: 'block',
+                      }}
+                    />
+                    {/* Green check badge */}
                     <div style={{
-                      width: 58,
-                      height: 58,
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg,#047857,#059669)',
-                      boxShadow: '0 4px 14px rgba(5,150,105,.45)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      position: 'absolute', top: -7, right: -7,
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: '#16a34a', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <svg width={26} height={26} viewBox="0 0 24 24" fill="none"
+                      <svg width={10} height={10} viewBox="0 0 24 24" fill="none"
                         stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20 6L9 17l-5-5" />
                       </svg>
                     </div>
+                    {/* Remove link */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhoto(idx)}
+                      style={{
+                        display: 'block', width: '100%', marginTop: 4,
+                        fontSize: 10, fontWeight: 700, color: '#dc2626',
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontFamily: "'DM Sans', sans-serif", padding: 0, textAlign: 'center',
+                      }}
+                    >
+                      Remove
+                    </button>
                   </div>
-                </>
-              ) : (
-                <Webcam
-                  ref={webcamRef}
-                  audio={false}
-                  screenshotFormat="image/jpeg"
-                  videoConstraints={WEBCAM_CONSTRAINTS}
-                  onUserMediaError={handleCameraError}
-                  mirrored
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              )}
+                ))}
+                {/* Empty slot placeholders */}
+                {Array.from({ length: TOTAL - photos.length }).map((_, idx) => (
+                  <div key={`slot-${idx}`} style={{
+                    width: 68, height: 68, borderRadius: 12,
+                    border: '2px dashed #cbd5e1',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: '#f8fafc', flexShrink: 0,
+                  }}>
+                    <span style={{ fontSize: 22, color: '#cbd5e1', lineHeight: 1 }}>+</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Submit — only when all 3 accepted */}
+          {allCaptured && (
+            <button
+              type="button"
+              className="fs-capture-btn"
+              onClick={handleSubmit}
+              disabled={submitting}
+              style={{ marginTop: 22, width: '100%', opacity: submitting ? 0.7 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}
+            >
+              {submitting ? 'Submitting…' : 'Submit Photos'}
+            </button>
+          )}
         </div>
 
-        {/* After capture: success banner */}
-        {photo && (
-          <div style={{
-            background: t.okL,
-            border: '1.5px solid rgba(5,150,105,.2)',
-            borderRadius: 12,
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            marginBottom: 16,
-          }} role="alert">
-            <div style={{
-              width: 26,
-              height: 26,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg,#047857,#059669)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <svg width={12} height={12} viewBox="0 0 24 24" fill="none"
-                stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: t.ok }}>
-              Photo captured successfully!
-            </span>
-          </div>
-        )}
-
-        {/* Before capture: instruction text */}
-        {!photo && !permissionDenied && (
-          <p style={{
-            fontSize: 13,
-            color: t.txtL,
-            textAlign: 'center',
-            lineHeight: 1.6,
-            marginBottom: 16,
-          }}>
-            Position your face inside the circle and look directly at the camera.
-          </p>
-        )}
-
-        {/* Buttons */}
-        {!permissionDenied && (
-          <div>
-            {photo ? (
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={handleRetake}
-                  style={{
-                    flex: 1,
-                    padding: 12,
-                    borderRadius: 12,
-                    border: `1.5px solid ${t.bdr}`,
-                    background: t.card,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: t.txtL,
-                    cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  Retake
-                </button>
-                <IndigoBtn
-                  onClick={handleContinue}
-                  style={{ flex: 2, width: 'auto', borderRadius: 14 }}
-                >
-                  Continue
-                </IndigoBtn>
-              </div>
-            ) : (
-              <IndigoBtn onClick={handleCapture}>
-                <svg width={17} height={17} viewBox="0 0 24 24" fill="none"
-                  stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-                Capture Photo
-              </IndigoBtn>
-            )}
-          </div>
-        )}
       </div>
-
-      <p style={{ marginTop: 16, fontSize: 13, color: t.txtL }}>
-        <Link to="/login" style={{ color: t.pri, fontWeight: 700, textDecoration: 'none' }}>
-          Back to Login
-        </Link>
-      </p>
     </div>
   );
 }
