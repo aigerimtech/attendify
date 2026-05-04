@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { mockAccounts } from '../../data/mockData';
+import { api } from '../../api/client';
 import { useTheme } from "../../context/ThemeContext";
 import { LogoMark, LogoMarkDark } from "../../components/LogoMark";
 import { IndigoBtn } from "../../components/shared/IndigoBtn";
@@ -9,12 +9,12 @@ export default function Login() {
   const navigate = useNavigate();
   const { theme: t, isDark } = useTheme();
 
-  const [role, setRole] = useState('student');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [identifierError, setIdentifierError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
@@ -39,22 +39,33 @@ export default function Login() {
     return valid;
   }
 
-  function handleSignIn(e) {
+  async function handleSignIn(e) {
     e.preventDefault();
     setError('');
     if (!validate()) return;
-
-    const match = mockAccounts.find(
-      (u) => u.email === identifier && u.password === password
-    );
-
-    if (!match) {
-      setError('Invalid credentials. Please try again.');
-      return;
+    setLoading(true);
+    try {
+      const data = await api.loginForm(identifier.trim(), password);
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('currentStudent', JSON.stringify({
+        full_name: data.full_name,
+        email: identifier.trim(),
+        student_number: data.student_number,
+        department: data.department,
+        face_enrolled: data.face_enrolled,
+        role: data.role,
+        user_id: data.user_id,
+      }));
+      if (!data.face_enrolled) {
+        navigate('/face-setup');
+      } else {
+        navigate('/student/dashboard');
+      }
+    } catch (err) {
+      setError(err.message || 'Invalid credentials. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem('currentStudent', JSON.stringify(match));
-    navigate('/student/dashboard');
   }
 
   const inputBase = {
@@ -69,19 +80,6 @@ export default function Login() {
     fontFamily: "'DM Sans', sans-serif",
     boxSizing: 'border-box',
   };
-
-  const roles = [
-    {
-      key: 'student',
-      label: 'Student',
-      path: 'M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5',
-    },
-    {
-      key: 'instructor',
-      label: 'Instructor',
-      path: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
-    },
-  ];
 
   return (
     <div style={{
@@ -117,58 +115,13 @@ export default function Login() {
         boxShadow: t.shMd,
       }}>
 
-        {/* Role toggle */}
-        <div style={{
-          background: t.bg,
-          borderRadius: 13,
-          padding: 4,
-          marginBottom: 22,
-          display: 'flex',
-        }} role="group" aria-label="Select role">
-          {roles.map(({ key, label, path }) => {
-            const active = role === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setRole(key)}
-                style={{
-                  flex: 1,
-                  padding: 10,
-                  borderRadius: 10,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  fontFamily: "'DM Sans', sans-serif",
-                  transition: 'all .15s',
-                  background: active ? t.card : 'transparent',
-                  color: active ? t.pri : t.txtL,
-                  boxShadow: active ? t.sh : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none"
-                  stroke={active ? t.pri : t.txtL} strokeWidth="2"
-                  strokeLinecap="round" strokeLinejoin="round">
-                  <path d={path} />
-                </svg>
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
         <form onSubmit={handleSignIn} noValidate>
 
           {/* Identifier field */}
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 13, fontWeight: 700, color: t.txt, marginBottom: 6, display: 'block' }}
               htmlFor="identifier">
-              {role === 'student' ? 'Student ID or Email' : 'Instructor ID or Email'}
+              Email or Student ID
             </label>
             <div style={{ position: 'relative' }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none"
@@ -181,7 +134,7 @@ export default function Login() {
                 id="identifier"
                 style={{ ...inputBase, border: `1.5px solid ${identifierError ? t.acc : t.bdr}` }}
                 type="text"
-                placeholder={role === 'student' ? 'Enter your student ID or email' : 'Enter your instructor ID or email'}
+                placeholder="Enter your email or student ID"
                 value={identifier}
                 onChange={(e) => { setIdentifier(e.target.value); setIdentifierError(''); }}
                 autoComplete="username"
@@ -248,16 +201,42 @@ export default function Login() {
 
           {/* Submit */}
           <IndigoBtn>Sign In</IndigoBtn>
+
+          {import.meta.env.DEV && (
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('token', 'dev-token');
+                localStorage.setItem('currentStudent', JSON.stringify({
+                  full_name: 'Dev Student',
+                  email: 'dev@test.com',
+                  student_number: 'STU-0000',
+                  department: 'Computer Engineering',
+                  face_enrolled: true,
+                  role: 'student',
+                  user_id: 0,
+                }));
+                navigate('/student/dashboard');
+              }}
+              style={{
+                marginTop: 10,
+                width: '100%',
+                padding: '10px',
+                borderRadius: 10,
+                border: '1.5px solid #aaa',
+                background: 'transparent',
+                color: '#888',
+                fontSize: 13,
+                fontFamily: "'DM Sans', sans-serif",
+                cursor: 'pointer',
+              }}
+            >
+              Dev Login (skip auth)
+            </button>
+          )}
         </form>
       </div>
 
-      {/* Bottom link */}
-      <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: t.txtL }}>
-        No account?{' '}
-        <Link to="/register" style={{ color: t.pri, fontWeight: 700, textDecoration: 'none' }}>
-          Register
-        </Link>
-      </p>
     </div>
   );
 }

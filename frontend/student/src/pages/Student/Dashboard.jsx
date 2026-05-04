@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { mockCourses, mockRecentActivity } from '../../data/mockData';
+import { api } from '../../api/client';
 import { useTheme } from "../../context/ThemeContext";
 import { LogoMark, LogoMarkDark } from "../../components/LogoMark";
 
@@ -24,6 +24,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme: t, isDark } = useTheme();
+  const [dashboard, setDashboard] = useState(null);
   const [bannerVisible, setBannerVisible] = useState(true);
   const [popupOpen, setPopupOpen] = useState(false);
   const avatarRef = useRef(null);
@@ -33,6 +34,12 @@ export default function Dashboard() {
   // Auth guard — must be before any early return, after all hooks
   useEffect(() => {
     if (!currentStudent) navigate('/login');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    api.get('/students/me/dashboard')
+      .then((data) => setDashboard(data))
+      .catch(() => setDashboard(null));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close popup when clicking outside
@@ -49,8 +56,8 @@ export default function Dashboard() {
 
   if (!currentStudent) return null;
 
-  const todaysClasses = currentStudent.courses.map((code) => mockCourses[code]).filter(Boolean);
-  const recentActivity = mockRecentActivity[currentStudent.studentId] ?? [];
+  const todaysClasses = dashboard?.enrolled_courses ?? [];
+  const recentActivity = dashboard?.recent_activity ?? [];
   const initials = currentStudent.name.split(' ').map((w) => w[0]).join('').toUpperCase();
 
   function handleLogout() {
@@ -185,7 +192,7 @@ export default function Dashboard() {
           </h2>
           <p style={{ fontSize: 13, color: t.txtL, margin: 0 }}>
             You have{' '}
-            <span style={{ color: t.pri, fontWeight: 700 }}>{todaysClasses.length}</span>{' '}
+            <span style={{ color: t.pri, fontWeight: 700 }}>{dashboard?.today_class_count ?? 0}</span>{' '}
             classes scheduled for today.
           </p>
         </div>
