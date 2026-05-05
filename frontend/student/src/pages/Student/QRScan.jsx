@@ -116,7 +116,7 @@ export default function QRScan() {
 
   function submitToken(qrToken) {
     api.post('/attendance/submit', { qr_token: qrToken })
-      .then((data) => navigate('/student/confirmation', { state: { session: data } }))
+      .then((data) => navigate('/student/verify', { state: { session: data } }))
       .catch((err) => {
         setStatus('denied');
         setError(err.message || 'Could not submit attendance.');
@@ -168,8 +168,8 @@ export default function QRScan() {
     stopScanning();
     setStatus('success');
     api.post('/attendance/submit', { qr_token: 'dev-mock-token-123' })
-      .then((data) => navigate('/student/confirmation', { state: { session: data } }))
-      .catch(() => navigate('/student/confirmation', { state: { session: DEV_MOCK_SESSION } }));
+      .then((data) => navigate('/student/verify', { state: { session: data } }))
+      .catch(() => navigate('/student/verify', { state: { session: DEV_MOCK_SESSION } }));
   }, [navigate, stopScanning]);
 
   const handleRetry = useCallback(() => {

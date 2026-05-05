@@ -12,7 +12,7 @@ const WEBCAM_CONSTRAINTS = {
 // --- Python Flask backend ---
 // Artık n8n kullanmıyoruz. Frontend doğrudan Python'a istek atıyor,
 // Python da Postgres'e yoklamayı kendisi kaydediyor.
-const API_URL = 'http://localhost:5001/recognize';
+const API_URL = 'http://localhost:5173/recognize';
 
 // Varsayılan mesaj
 const DEFAULT_MSG = 'Please hold your phone steady and look directly at the screen.';
