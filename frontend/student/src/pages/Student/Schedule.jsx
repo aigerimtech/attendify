@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useTheme } from "../../context/ThemeContext";
-import { LogoMark, LogoMarkDark } from "../../components/LogoMark";
+import { LogoMark } from "../../components/LogoMark";
 
 const COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#0d9488', '#059669', '#d97706'];
 const colorFor = (i) => COLORS[i % COLORS.length];
@@ -107,7 +107,7 @@ export default function Schedule() {
         {/* Top bar */}
         <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {isDark ? <LogoMarkDark size={34} /> : <LogoMark size={34} />}
+            <LogoMark size={38} bgColor={t.hdr} />
             <span style={{ fontWeight: 800, fontSize: 18, color: t.txt, letterSpacing: -0.3 }}>Attendify</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

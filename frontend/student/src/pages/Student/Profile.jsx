@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useTheme } from "../../context/ThemeContext";
-import { LogoMark, LogoMarkDark } from "../../components/LogoMark";
+import { LogoMark } from "../../components/LogoMark";
 
 const NAV_ITEMS = [
   { label: 'Home',     path: '/student/dashboard', iconPath: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10' },
@@ -207,7 +207,7 @@ export default function Profile() {
         {/* Top row */}
         <div style={{ padding: '14px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {isDark ? <LogoMarkDark size={32} /> : <LogoMark size={32} />}
+            <LogoMark size={38} bgColor={t.hdr} />
             <span style={{ fontWeight: 800, fontSize: 17, color: t.txt }}>Attendify</span>
           </div>
           <button

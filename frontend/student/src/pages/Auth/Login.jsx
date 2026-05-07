@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useTheme } from "../../context/ThemeContext";
-import { LogoMark, LogoMarkDark } from "../../components/LogoMark";
+import { LogoMark } from "../../components/LogoMark";
 import { IndigoBtn } from "../../components/shared/IndigoBtn";
 
 export default function Login() {
@@ -96,7 +96,7 @@ export default function Login() {
 
       {/* Logo section */}
       <div style={{ textAlign: 'center', marginBottom: 26 }}>
-        {isDark ? <LogoMarkDark size={72} /> : <LogoMark size={72} />}
+        <LogoMark size={72} bgColor={t.bgAlt} />
         <div style={{ fontWeight: 800, fontSize: 28, color: t.txt, letterSpacing: -0.6, marginTop: 12 }}>
           Attendify
         </div>
