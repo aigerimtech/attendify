@@ -56,11 +56,14 @@ export default function Login() {
         role: data.role,
         user_id: data.user_id,
       }));
-      if (!data.face_enrolled) {
-        navigate('/face-setup');
-      } else {
-        navigate('/student/dashboard');
-      }
+      // TODO: re-enable face check when ML service is ready
+      // if (!data.face_enrolled) {
+      //   setFaceMessage(true);
+      //   setTimeout(() => navigate('/face-setup'), 2000);
+      // } else {
+      //   navigate('/student/dashboard');
+      // }
+      navigate('/student/dashboard');
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please try again.');
     } finally {

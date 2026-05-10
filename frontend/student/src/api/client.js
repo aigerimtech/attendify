@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+const BASE = import.meta.env.VITE_API_BASE_URL || 'http://172.16.1.249:8000/api/v1'
 
 async function request(method, path, body, isForm = false) {
   const token = localStorage.getItem('token')
