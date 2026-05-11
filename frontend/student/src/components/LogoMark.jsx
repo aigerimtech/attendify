@@ -1,31 +1,37 @@
 export function LogoMark({ size = 34 }) {
+  const scale = size / 64;
+  const br = Math.round(18 * scale);
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <rect width="48" height="48" rx="13" fill="#3730a3" />
-      <circle cx="24" cy="17" r="7" fill="white" opacity="0.9" />
-      <path d="M10 38c0-7.732 6.268-14 14-14s14 6.268 14 14"
-        stroke="white" strokeWidth="2.5" strokeLinecap="round"
-        fill="none" opacity="0.45" />
-      <circle cx="35" cy="35" r="8" fill="#f43f5e" />
-      <path d="M31.5 35.2l2.2 2.3 4.3-4.5"
-        stroke="white" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div style={{
+      width: size,
+      height: size,
+      margin: '0 auto',
+      borderRadius: br,
+      background: 'linear-gradient(135deg, #3730a3, #4f46e5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: '0 8px 24px rgba(67,56,202,0.30)',
+      flexShrink: 0,
+    }}>
+      <svg
+        width={Math.round(size * 0.48)}
+        height={Math.round(size * 0.48)}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <polyline points="16 11 18 13 22 9" />
+      </svg>
+    </div>
   );
 }
 
 export function LogoMarkDark({ size = 34 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <rect width="48" height="48" rx="13" fill="#4f46e5" />
-      <circle cx="24" cy="17" r="7" fill="white" opacity="0.9" />
-      <path d="M10 38c0-7.732 6.268-14 14-14s14 6.268 14 14"
-        stroke="white" strokeWidth="2.5" strokeLinecap="round"
-        fill="none" opacity="0.45" />
-      <circle cx="35" cy="35" r="8" fill="#fb7185" />
-      <path d="M31.5 35.2l2.2 2.3 4.3-4.5"
-        stroke="white" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <LogoMark size={size} />;
 }
