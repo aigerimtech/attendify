@@ -52,7 +52,7 @@ function Skeleton({ className = '' }) {
 }
 
 /* ── CourseCard ───────────────────────────────────────────────── */
-function CourseCard({ course, palette, onEdit, onDelete }) {
+function CourseCard({ course, palette, onEdit, onDelete, onEnroll }) {
   const [menu, setMenu] = useState(false)
 
   const attendance = course.attendance_rate != null
@@ -137,8 +137,8 @@ function CourseCard({ course, palette, onEdit, onDelete }) {
       )}
 
       <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-        <button className="text-sm font-semibold text-primary-600 hover:underline flex items-center gap-1">
-          View Details <ChevronRight size={14} />
+        <button onClick={() => onEnroll(course)} className="text-sm font-semibold text-primary-600 hover:underline flex items-center gap-1">
+          Manage Students <ChevronRight size={14} />
         </button>
         <div className="flex items-center gap-1 text-xs text-emerald-600">
           <TrendingUp size={12} />
@@ -288,6 +288,99 @@ function Modal({ onClose, onSave, editCourse, saving }) {
   )
 }
 
+
+/* ── EnrollModal ──────────────────────────────────────────────────── */
+function EnrollModal({ course, onClose, addToast }) {
+  const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [studentId, setStudentId] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  const fetchStudents = async () => {
+    try {
+      const data = await api.get(`/courses/${course.id}/students`)
+      setStudents(Array.isArray(data) ? data : [])
+    } catch {}
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchStudents() }, [])
+
+  const handleAdd = async () => {
+    const id = parseInt(studentId.trim())
+    if (!id) { addToast('Enter a valid Student ID', 'error'); return }
+    setAdding(true)
+    try {
+      await api.post(`/courses/${course.id}/enroll`, { student_id: id, course_id: course.id })
+      addToast('Student enrolled successfully')
+      setStudentId('')
+      fetchStudents()
+    } catch (err) {
+      addToast(err.message || 'Failed to enroll student', 'error')
+    } finally { setAdding(false) }
+  }
+
+  const handleRemove = async (studentId) => {
+    try {
+      await api.delete(`/courses/${course.id}/enroll/${studentId}`)
+      addToast('Student removed')
+      setStudents(prev => prev.filter(s => s.student_id !== studentId))
+    } catch (err) {
+      addToast(err.message || 'Failed to remove student', 'error')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="card w-full max-w-lg p-6 fade-in max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
+            {course.name ?? course.course_name} — Students
+          </h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800">
+            <X size={16} className="text-slate-500" />
+          </button>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          <input
+            type="number"
+            placeholder="Student ID"
+            value={studentId}
+            onChange={e => setStudentId(e.target.value)}
+            className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-600"
+          />
+          <button onClick={handleAdd} disabled={adding} className="btn-primary px-4">
+            {adding ? <Loader2 size={14} className="animate-spin" /> : <><Plus size={14} /> Add</>}
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <p className="text-sm text-slate-400 text-center py-8">Loading…</p>
+          ) : students.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-8">No students enrolled yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {students.map(s => (
+                <div key={s.student_id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{s.full_name}</p>
+                    <p className="text-xs text-slate-400">{s.email} · #{s.student_number}</p>
+                  </div>
+                  <button onClick={() => handleRemove(s.student_id)} className="text-red-400 hover:text-red-600 transition-colors">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Main Page ────────────────────────────────────────────────── */
 export default function Courses() {
   const { addToast } = useToast()
@@ -299,6 +392,7 @@ export default function Courses() {
   const [showModal,  setShowModal]  = useState(false)
   const [editCourse, setEditCourse] = useState(null)
   const [colorMap,   setColorMap]   = useState(getColorMap)
+  const [enrollCourse, setEnrollCourse] = useState(null)
 
   const fetchCourses = useCallback(async () => {
     setLoading(true)
@@ -380,6 +474,13 @@ export default function Courses() {
 
   return (
     <div className="fade-in">
+      {enrollCourse && (
+        <EnrollModal
+          course={enrollCourse}
+          onClose={() => setEnrollCourse(null)}
+          addToast={addToast}
+        />
+      )}
       {showModal && (
         <Modal
           onClose={() => { setShowModal(false); setEditCourse(null) }}
@@ -473,6 +574,7 @@ export default function Courses() {
                   palette={palette}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onEnroll={setEnrollCourse}
                 />
               )
             })
@@ -495,3 +597,4 @@ export default function Courses() {
     </div>
   )
 }
+
