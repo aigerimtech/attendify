@@ -79,19 +79,19 @@ async def submit_attendance(
     if reference_vectors:
         similarity_score = await ml_client.compare_embeddings(query_embedding, reference_vectors)
         face_validated = similarity_score >= settings.FACE_SIMILARITY_THRESHOLD
+    if not face_validated:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Face verification failed (similarity: {similarity_score:.2f})")
     ip_address = request.client.host if request.client else None
     record = AttendanceRecord(
         session_id=session.id, student_id=student.id,
-        status=AttendanceStatus.present if face_validated else AttendanceStatus.pending,
+        status=AttendanceStatus.present,
         face_similarity_score=similarity_score, qr_validated=True,
-        face_validated=face_validated, ip_address=ip_address,
+        face_validated=True, ip_address=ip_address,
     )
     db.add(record)
     db.commit()
     db.refresh(record)
-    if not face_validated:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Face verification failed (similarity: {similarity_score:.2f})")
     return _enrich(record)
 
 
