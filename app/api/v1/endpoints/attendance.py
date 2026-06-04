@@ -59,7 +59,6 @@ async def submit_attendance(
     image_bytes = await image.read()
     if len(image_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Image too large (max 10 MB)")
-    is_live = await ml_client.check_liveness(image_bytes)
     query_embedding = await ml_client.extract_embedding(image_bytes)
     if query_embedding is None:
         raise HTTPException(status_code=422, detail="No face detected in the submitted image")
@@ -83,9 +82,9 @@ async def submit_attendance(
     ip_address = request.client.host if request.client else None
     record = AttendanceRecord(
         session_id=session.id, student_id=student.id,
-        status=AttendanceStatus.present if (face_validated and is_live) else AttendanceStatus.pending,
+        status=AttendanceStatus.present if face_validated else AttendanceStatus.pending,
         face_similarity_score=similarity_score, qr_validated=True,
-        face_validated=face_validated and is_live, ip_address=ip_address,
+        face_validated=face_validated, ip_address=ip_address,
     )
     db.add(record)
     db.commit()
@@ -93,9 +92,24 @@ async def submit_attendance(
     if not face_validated:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Face verification failed (similarity: {similarity_score:.2f})")
-    if not is_live:
-        raise HTTPException(status_code=422, detail="Liveness check failed.")
     return _enrich(record)
+
+
+@router.post("/liveness-check")
+async def liveness_check(
+    request: Request,
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_student),
+) -> dict:
+    """
+    Standalone liveness check — no attendance record created.
+    Frontend polls this until is_live=True, then submits attendance once.
+    """
+    client_key = request.query_params.get("client_key", str(current_user.id))
+    image_bytes = await image.read()
+    is_live = await ml_client.check_liveness(image_bytes, client_key=client_key)
+    return {"is_live": is_live}
+
 
 @router.get("/my", response_model=List[AttendanceOut])
 def get_my_attendance(db: Session = Depends(get_db),

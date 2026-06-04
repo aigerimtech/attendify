@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     ML_SERVICE_URL: str = "http://localhost:8001"
     ML_SERVICE_ENABLED: bool = True
-    FACE_SIMILARITY_THRESHOLD: float = 0.60
+    FACE_SIMILARITY_THRESHOLD: float = 0.35
 
     UPLOAD_DIR: str = "uploads"
     MAX_FACE_PHOTOS: int = 10

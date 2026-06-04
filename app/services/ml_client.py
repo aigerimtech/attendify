@@ -78,7 +78,7 @@ class MLServiceClient:
                 detail="Face recognition service unavailable",
             )
 
-    async def check_liveness(self, image_bytes: bytes) -> bool:
+    async def check_liveness(self, image_bytes: bytes, client_key: str = "default") -> bool:
         """Anti-spoofing liveness check. Returns True if face appears live."""
         if not self._ml_enabled():
             return True  # skip liveness in demo mode
@@ -86,7 +86,7 @@ class MLServiceClient:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/liveness",
+                    f"{self.base_url}/liveness?client_key={client_key}",
                     files={"image": ("capture.jpg", image_bytes, "image/jpeg")},
                 )
                 if response.status_code == 200:
@@ -97,3 +97,4 @@ class MLServiceClient:
 
 
 ml_client = MLServiceClient()
+
