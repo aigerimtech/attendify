@@ -1,0 +1,84 @@
+version: "3.9"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: attendify_db
+    environment:
+      POSTGRES_USER: attendify
+      POSTGRES_PASSWORD: attendify
+      POSTGRES_DB: attendify
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attendify"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ml-service:
+    build:
+      context: ../attendify-feature-ml-service-orkan/ml-service
+      dockerfile: Dockerfile
+    container_name: attendify_ml_service
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: attendify_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://attendify:attendify@db:5432/attendify
+      ML_SERVICE_URL: http://ml-service:5001
+      ML_SERVICE_ENABLED: "True"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  admin-frontend:
+    build:
+      context: ../attendify-feature-admin-frontend/frontend-admin
+      dockerfile: Dockerfile
+    container_name: attendify_admin
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+  instructor-frontend:
+    build:
+      context: ../attendify-feature-instructor
+      dockerfile: Dockerfile
+    container_name: attendify_instructor
+    ports:
+      - "5175:5175"
+    depends_on:
+      - backend
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: attendify_ngrok
+    environment:
+      - NGROK_AUTHTOKEN=3EfbDlVqYNfmHfeUmB9DNxcNXO8_7WyyDGyHDVCrU1rBbrP7Y
+    command: http backend:8000
+    ports:
+      - "4040:4040"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
