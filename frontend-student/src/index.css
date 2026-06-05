@@ -1,0 +1,35 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root {
+  width: 100%; min-height: 100vh;
+  margin: 0; padding: 0; overflow-x: hidden;
+  font-family: 'DM Sans', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background-color: #e5e7eb;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  -webkit-font-smoothing: antialiased;
+}
+
+.phone-frame {
+  width: 100%;
+  max-width: 390px;
+  min-height: 100vh;
+  background-color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+#root {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+}
+
+body {
+  background: #f0f2ff;
+}
