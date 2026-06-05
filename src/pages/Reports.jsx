@@ -23,7 +23,7 @@ import { useNavigate } from 'react-router-dom'
 
 /* ── helpers ──────────────────────────────────────────────────── */
 function absenceRate(student) {
-  if (student.attendance_rate != null) return Math.round((1 - student.attendance_rate) * 100)
+  if (student.absence_rate != null) return Math.round(student.absence_rate * 100)
   if (student.absenceRate != null) return student.absenceRate
   return null
 }
@@ -476,3 +476,4 @@ export default function Reports() {
     </div>
   )
 }
+
