@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     FACE_SIMILARITY_THRESHOLD: float = 0.35
 
     UPLOAD_DIR: str = "uploads"
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = ""
+    MAIL_SERVER: str = "smtp.gmail.com"
+    MAIL_PORT: int = 587
+    MAIL_TLS: bool = True
+    MAIL_SSL: bool = False
     MAX_FACE_PHOTOS: int = 10
     MIN_FACE_PHOTOS: int = 1
 
@@ -42,3 +49,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

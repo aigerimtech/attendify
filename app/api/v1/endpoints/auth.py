@@ -1,4 +1,5 @@
 from __future__ import annotations
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 import random
 import string
 from datetime import datetime, timedelta, timezone
@@ -161,7 +162,34 @@ def forgot_password(payload: ForgotPasswordPayload, db: Session = Depends(get_db
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
         db.add(PasswordResetToken(user_id=user.id, email=payload.email, code=code, expires_at=expires_at))
         db.commit()
-        print(f"[ATTENDIFY] RESET CODE for {payload.email}: {code}")
+        try:
+            from app.core.config import settings
+            from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+            conf = ConnectionConfig(
+                MAIL_USERNAME=settings.MAIL_USERNAME,
+                MAIL_PASSWORD=settings.MAIL_PASSWORD,
+                MAIL_FROM=settings.MAIL_FROM,
+                MAIL_PORT=settings.MAIL_PORT,
+                MAIL_SERVER=settings.MAIL_SERVER,
+                MAIL_STARTTLS=settings.MAIL_TLS,
+                MAIL_SSL_TLS=settings.MAIL_SSL,
+                USE_CREDENTIALS=True,
+            )
+            message = MessageSchema(
+                subject="Attendify - Password Reset Code",
+                recipients=[payload.email],
+                body=f"Your password reset code is: {code}\n\nThis code expires in 15 minutes.",
+                subtype=MessageType.plain,
+            )
+            fm = FastMail(conf)
+            import threading
+            def send():
+                import asyncio
+                asyncio.run(fm.send_message(message))
+            threading.Thread(target=send, daemon=True).start()
+        except Exception as e:
+            print(f"[ATTENDIFY] Email send failed: {e}")
+            print(f"[ATTENDIFY] RESET CODE for {payload.email}: {code}")
     return MessageResponse(message="If this email exists, a reset code was sent.")
 
 @router.post("/reset-password", response_model=MessageResponse)
