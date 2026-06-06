@@ -19,7 +19,8 @@ router = APIRouter()
 DAY_MAP = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4}
 
 def _today_day_name() -> str:
-    return datetime.now().strftime("%A").lower()
+    day = datetime.now().strftime("%A").lower()
+    return day if day in ("monday","tuesday","wednesday","thursday","friday") else "monday"
 
 def _get_session_status_for_course(course_id: int, student_id: int, db: Session) -> tuple:
     today_sessions = (
@@ -170,3 +171,4 @@ def get_my_dashboard(
         recent_activity=recent_activity,
         next_class=next_class,
     )
+
