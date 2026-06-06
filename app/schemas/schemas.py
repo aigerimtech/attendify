@@ -202,6 +202,8 @@ class SessionOut(BaseModel):
     qr_expires_at: Optional[datetime] = None
     started_at: datetime
     ended_at: Optional[datetime] = None
+    attended_count: int = 0
+    enrolled_count: int = 0
     model_config = {"from_attributes": True}
 
 class SessionWithQR(SessionOut):

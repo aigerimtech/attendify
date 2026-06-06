@@ -21,7 +21,24 @@ def list_users(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin),
 ) -> List[UserOut]:
-    return db.query(User).all()  # type: ignore[return-value]
+    users = db.query(User).all()
+    result = []
+    for u in users:
+        student = db.query(Student).filter(Student.user_id == u.id).first()
+        out = UserOut(
+            id=u.id,
+            email=u.email,
+            first_name=u.first_name,
+            last_name=u.last_name,
+            role=u.role,
+            is_active=u.is_active,
+            created_at=u.created_at,
+            student_number=student.student_number if student else None,
+            department=student.department if student else None,
+            face_enrolled=student.face_enrolled if student else None,
+        )
+        result.append(out)
+    return result
 
 
 @router.patch("/users/{user_id}/activate", response_model=UserOut)

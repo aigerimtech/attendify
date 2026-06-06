@@ -69,6 +69,13 @@ def list_my_sessions(db: Session = Depends(get_db), current_user: User = Depends
             title=s.title, status=s.status,
             qr_token=s.qr_token, qr_expires_at=s.qr_expires_at,
             started_at=s.started_at, ended_at=s.ended_at,
+            attended_count=db.query(AttendanceRecord).filter(
+                AttendanceRecord.session_id == s.id,
+                AttendanceRecord.face_validated == True,
+            ).count(),
+            enrolled_count=db.query(Enrollment).filter(
+                Enrollment.course_id == s.course_id,
+            ).count(),
         )
         for s in sessions
     ]
