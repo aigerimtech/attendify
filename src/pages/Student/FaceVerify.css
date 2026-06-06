@@ -1,0 +1,412 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ── Root ────────────────────────────────────────────────────── */
+.fv-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.fv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.fv-back-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 10px;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.fv-back-btn:hover { background: #e2e8f0; }
+
+.fv-header-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.2px;
+}
+
+.fv-cancel-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.fv-cancel-link:hover { color: #1e293b; }
+
+/* ── Body ────────────────────────────────────────────────────── */
+.fv-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 28px 24px;
+  gap: 0;
+}
+
+/* ── Camera outer container ──────────────────────────────────── */
+.fv-camera-outer {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+  flex-shrink: 0;
+}
+
+/* ── Camera ring ─────────────────────────────────────────────── */
+.fv-camera-ring {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: #0d1117;
+  border: 4px solid #2563eb;
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 1;
+  transition: border-color 0.4s ease;
+}
+
+.fv-ring-success { border-color: #16a34a; }
+.fv-ring-failed  { border-color: #dc2626; }
+
+.fv-webcam {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Camera-denied placeholder */
+.fv-cam-denied {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+}
+
+/* ── Face guide dots ─────────────────────────────────────────── */
+.fv-face-dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fv-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3b82f6;
+  opacity: 0.7;
+  animation: fv-dot-pulse 1.4s ease-in-out infinite;
+}
+
+/* Left eye */
+.fv-dot-1 { top: 30%; left: 25%; animation-delay: 0s; }
+/* Right eye */
+.fv-dot-2 { top: 30%; right: 25%; animation-delay: 0.2s; }
+/* Nose */
+.fv-dot-3 { top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: 0.4s; }
+/* Mouth left */
+.fv-dot-4 { top: 65%; left: 35%; animation-delay: 0.1s; }
+/* Mouth right */
+.fv-dot-5 { top: 65%; right: 35%; animation-delay: 0.3s; }
+
+@keyframes fv-dot-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.7; }
+  50%       { transform: scale(1.8); opacity: 1;   }
+}
+/* Override transform for the centered nose dot */
+.fv-dot-3 {
+  animation-name: fv-dot-pulse-center;
+}
+@keyframes fv-dot-pulse-center {
+  0%, 100% { transform: translate(-50%, -50%) scale(1);   opacity: 0.7; }
+  50%       { transform: translate(-50%, -50%) scale(1.8); opacity: 1;   }
+}
+
+/* ── State overlays ──────────────────────────────────────────── */
+.fv-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.fv-overlay-success { background: rgba(22, 163, 74, 0.2); }
+.fv-overlay-failed  { background: rgba(220, 38, 38, 0.2); }
+
+.fv-overlay-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fv-badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes fv-badge-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.fv-overlay-badge-success { background: #16a34a; }
+.fv-overlay-badge-failed  { background: #dc2626; }
+
+/* ── Arc SVG — positioned over the ring ─────────────────────── */
+.fv-arc-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 240px;
+  height: 240px;
+  z-index: 2;          /* draws over the ring's border */
+  transform-origin: 120px 120px;
+  pointer-events: none;
+}
+
+.fv-arc-spin {
+  animation: fv-spin 1.8s linear infinite;
+}
+
+@keyframes fv-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Camera icon pill (bottom center) ───────────────────────── */
+.fv-cam-btn {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 36px;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  z-index: 3;
+  flex-shrink: 0;
+}
+
+/* ── Title & subtitle ────────────────────────────────────────── */
+.fv-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.4px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.fv-subtitle {
+  font-size: 14px;
+  color: #475569;
+  text-align: center;
+  line-height: 1.6;
+  max-width: 270px;
+  margin-bottom: 24px;
+}
+
+/* ── Verifying status pill ───────────────────────────────────── */
+.fv-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 8px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #2563eb;
+  letter-spacing: 0.1px;
+  margin-bottom: 16px;
+}
+
+.fv-status-dot {
+  width: 8px;
+  height: 8px;
+  background: #2563eb;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: fv-status-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes fv-status-pulse {
+  0%, 100% { opacity: 1;    transform: scale(1);    }
+  50%       { opacity: 0.35; transform: scale(0.75); }
+}
+
+/* ── Primary button (success / notify) ──────────────────────── */
+.fv-continue-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.1px;
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.25);
+  transition: opacity 0.18s, box-shadow 0.18s;
+  margin-bottom: 10px;
+}
+.fv-continue-btn:hover  { opacity: 0.92; }
+.fv-continue-btn:active { opacity: 0.85; }
+
+/* ── Button group (failed state) ────────────────────────────── */
+.fv-btn-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Outlined retry button ───────────────────────────────────── */
+.fv-retry-btn {
+  width: 100%;
+  padding: 13px;
+  background: transparent;
+  color: #475569;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fv-retry-btn:hover  { border-color: #94a3b8; color: #1e293b; }
+.fv-retry-btn:active { background: #f8fafc; }
+
+/* ── DEV skip button ─────────────────────────────────────────── */
+.fv-skip-btn {
+  margin-top: 8px;
+  padding: 9px 22px;
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.fv-skip-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.fv-footer {
+  padding: 16px 24px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.fv-encrypted {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.fv-privacy-text {
+  font-size: 11.5px;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.55;
+  max-width: 280px;
+}
+
+/* ── Alert / Status Message (Claude added) ──────────────────── */
+.fv-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 340px;
+  margin: 16px auto 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  border: 1px solid transparent;
+  animation: fv-alert-pop 0.25s ease-out;
+}
+
+.fv-alert-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.fv-alert-info {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+.fv-alert-info .fv-alert-icon { background: #2563eb; }
+
+.fv-alert-warning {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+.fv-alert-warning .fv-alert-icon { background: #f59e0b; }
+
+.fv-alert-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+.fv-alert-error .fv-alert-icon { background: #ef4444; }
+
+@keyframes fv-alert-pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
