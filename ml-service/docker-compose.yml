@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres_attendance:
+    image: postgres:13-alpine
+    container_name: attendance-db
+    environment:
+      - POSTGRES_USER=n8n
+      - POSTGRES_PASSWORD=n8n_password
+      - POSTGRES_DB=attendance
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data:
