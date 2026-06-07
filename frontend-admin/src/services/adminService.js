@@ -58,8 +58,12 @@ export async function createStudent(form) {
   })
 }
 
-export async function deleteStudent(_id) {
-  throw new Error('Delete is not supported yet — endpoint not available.')
+export async function editUser(id, payload) {
+  return request('PATCH', `/admin/users/${id}/edit`, payload)
+}
+
+export async function deleteStudent(id) {
+  return request('DELETE', `/admin/users/${id}`)
 }
 
 export async function getInstructors() {
@@ -79,8 +83,8 @@ export async function createInstructor(form) {
   })
 }
 
-export async function deleteInstructor(_id) {
-  throw new Error('Delete is not supported yet — endpoint not available.')
+export async function deleteInstructor(id) {
+  return request('DELETE', `/admin/users/${id}`)
 }
 
 export async function toggleUserStatus(id, _type, isActive) {

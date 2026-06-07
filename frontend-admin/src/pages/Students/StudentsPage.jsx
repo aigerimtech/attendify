@@ -1,371 +1,325 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getStudents, toggleUserStatus, deleteStudent } from '../../services/adminService.js'
-
-// ── helpers ───────────────────────────────────────────────────────────────────
+import { getStudents, toggleUserStatus, deleteStudent, editUser } from '../../services/adminService.js'
 
 function fmtDate(iso) {
   if (!iso) return '—'
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
-
-
-function statusBadge(active) {
-  return (
-    <span style={{
-      display: 'inline-block',
-      padding: '2px 10px', borderRadius: 99,
-      fontSize: 12, fontWeight: 700,
-      background: active ? 'var(--green-light)' : 'var(--rose-light)',
-      color:      active ? 'var(--green)'       : 'var(--rose)',
-      border:     `1px solid ${active ? '#6ee7b7' : '#fecdd3'}`,
-    }}>
-      {active ? 'Active' : 'Inactive'}
-    </span>
-  )
-}
-
-// ── skeleton ──────────────────────────────────────────────────────────────────
 
 const COLS = 8
 
-function SkeletonRow({ shade }) {
+/* ── Edit Modal ──────────────────────────────────────────────────────────── */
+function EditModal({ student, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    first_name:     student.first_name || '',
+    last_name:      student.last_name  || '',
+    email:          student.email      || '',
+    student_number: student.student_number || '',
+    department:     student.department || '',
+    new_password:   '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState('')
+
+  const handle = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+
+  const submit = async () => {
+    setSaving(true); setError('')
+    try {
+      const payload = {}
+      if (form.first_name.trim())     payload.first_name     = form.first_name.trim()
+      if (form.last_name.trim())      payload.last_name      = form.last_name.trim()
+      if (form.email.trim())          payload.email          = form.email.trim()
+      if (form.student_number.trim()) payload.student_number = form.student_number.trim()
+      if (form.department.trim())     payload.department     = form.department.trim()
+      if (form.new_password.trim())   payload.new_password   = form.new_password.trim()
+      const updated = await editUser(student.id, payload)
+      onSaved(updated)
+      onClose()
+    } catch (err) {
+      setError(err.message || 'Failed to save.')
+    } finally { setSaving(false) }
+  }
+
+  const inputCls = 'w-full px-3 py-2 border border-[#e0e7ff] dark:border-[#2e2c48] rounded-xl text-sm text-[#1e1b4b] dark:text-slate-200 bg-white dark:bg-[#17162a] focus:outline-none focus:ring-2 focus:ring-[#4f46e5]'
+
   return (
-    <tr style={{ background: shade ? '#f8f9ff' : '#fff' }}>
-      {Array.from({ length: COLS }).map((_, i) => (
-        <td key={i} style={{ padding: '14px 16px' }}>
-          <div style={{
-            height: 14, borderRadius: 6,
-            background: 'linear-gradient(90deg,#e0e7ff 25%,#f0f2ff 50%,#e0e7ff 75%)',
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 1.4s infinite',
-            width: i === 0 ? '70%' : i === 1 ? '90%' : '55%',
-          }} />
-        </td>
-      ))}
-    </tr>
+    <div style={{ position:'fixed',inset:0,zIndex:1000,background:'rgba(15,12,40,0.45)',display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
+      onClick={onClose}>
+      <div style={{ background:'#fff',borderRadius:16,border:'1px solid #e0e7ff',boxShadow:'0 20px 60px rgba(0,0,0,0.18)',padding:'28px 28px 24px',maxWidth:460,width:'100%' }}
+        onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontSize:17,fontWeight:800,color:'#1e1b4b',marginBottom:20 }}>Edit Student</h2>
+
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12 }}>
+          <div>
+            <label style={{ fontSize:11,fontWeight:600,color:'#6366f1',display:'block',marginBottom:4 }}>First Name</label>
+            <input name="first_name" value={form.first_name} onChange={handle} className={inputCls} />
+          </div>
+          <div>
+            <label style={{ fontSize:11,fontWeight:600,color:'#6366f1',display:'block',marginBottom:4 }}>Last Name</label>
+            <input name="last_name" value={form.last_name} onChange={handle} className={inputCls} />
+          </div>
+        </div>
+
+        <div style={{ marginBottom:12 }}>
+          <label style={{ fontSize:11,fontWeight:600,color:'#6366f1',display:'block',marginBottom:4 }}>Email</label>
+          <input name="email" type="email" value={form.email} onChange={handle} className={inputCls} />
+        </div>
+
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12 }}>
+          <div>
+            <label style={{ fontSize:11,fontWeight:600,color:'#6366f1',display:'block',marginBottom:4 }}>Student Number</label>
+            <input name="student_number" value={form.student_number} onChange={handle} className={inputCls} />
+          </div>
+          <div>
+            <label style={{ fontSize:11,fontWeight:600,color:'#6366f1',display:'block',marginBottom:4 }}>Department</label>
+            <input name="department" value={form.department} onChange={handle} className={inputCls} />
+          </div>
+        </div>
+
+        <div style={{ marginBottom:20 }}>
+          <label style={{ fontSize:11,fontWeight:600,color:'#6366f1',display:'block',marginBottom:4 }}>New Password <span style={{ fontWeight:400,color:'#94a3b8' }}>(leave blank to keep)</span></label>
+          <input name="new_password" type="password" value={form.new_password} onChange={handle} placeholder="••••••••" className={inputCls} />
+        </div>
+
+        {error && <p style={{ fontSize:13,color:'#f43f5e',marginBottom:12 }}>{error}</p>}
+
+        <div style={{ display:'flex',gap:10,justifyContent:'flex-end' }}>
+          <button onClick={onClose} disabled={saving}
+            style={{ padding:'9px 20px',borderRadius:9,border:'1.5px solid #e0e7ff',background:'#fff',color:'#6366f1',fontSize:14,fontWeight:600,cursor:'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={submit} disabled={saving}
+            style={{ padding:'9px 20px',borderRadius:9,border:'none',background:'#4f46e5',color:'#fff',fontSize:14,fontWeight:700,cursor:saving?'not-allowed':'pointer',opacity:saving?0.7:1 }}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
-// ── page ──────────────────────────────────────────────────────────────────────
-
 export default function StudentsPage() {
   const navigate = useNavigate()
-  const [students, setStudents] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [toggling, setToggling] = useState(null) // id being toggled
-  const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [students,      setStudents]      = useState([])
+  const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState('')
+  const [toggling,      setToggling]      = useState(null)
+  const [toggleTarget,  setToggleTarget]  = useState(null)
+  const [toggleLoading, setToggleLoading] = useState(false)
+  const [deleteTarget,  setDeleteTarget]  = useState(null)
+  const [deleting,      setDeleting]      = useState(false)
+  const [editTarget,    setEditTarget]    = useState(null)
+  const [search,        setSearch]        = useState('')
 
-  async function load() {
-    setLoading(true)
+  useEffect(() => {
+    getStudents()
+      .then(setStudents)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  function handleToggle(student) { setToggleTarget(student) }
+
+  async function confirmToggle() {
+    if (!toggleTarget) return
+    setToggleLoading(true)
+    setToggling(toggleTarget.id)
     try {
-      const data = await getStudents()
-      setStudents(data)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function handleToggle(student) {
-    setToggling(student.id)
-    try {
-      await toggleUserStatus(student.id, 'student', !student.is_active)
-      await load()
-    } finally {
-      setToggling(null)
-    }
-  }
-
-  function handleDelete(student) {
-    setDeleteTarget(student)
+      await toggleUserStatus(toggleTarget.id, 'student', !toggleTarget.is_active)
+      setStudents(list => list.map(s => s.id === toggleTarget.id ? { ...s, is_active: !s.is_active } : s))
+      setToggleTarget(null)
+    } catch (e) { setError(e.message) }
+    finally { setToggleLoading(false); setToggling(null) }
   }
 
   async function confirmDelete() {
     if (!deleteTarget) return
-    setDeleteLoading(true)
+    setDeleting(true)
     try {
       await deleteStudent(deleteTarget.id)
+      setStudents(list => list.filter(s => s.id !== deleteTarget.id))
       setDeleteTarget(null)
-      await load()
-    } finally {
-      setDeleteLoading(false)
-    }
+    } catch (e) { setError(e.message) }
+    finally { setDeleting(false) }
   }
 
-  const pending = students.filter(s => s.face_photos_count < 3).length
+  function handleSaved(updated) {
+    setStudents(list => list.map(s => s.id === updated.id ? { ...s, ...updated } : s))
+  }
+
+  const q = search.toLowerCase()
+  const filtered = students.filter(s => {
+    const name  = [s.first_name, s.last_name].filter(Boolean).join(' ').toLowerCase()
+    const id    = (s.student_number || '').toLowerCase()
+    const email = (s.email || '').toLowerCase()
+    return !q || name.includes(q) || id.includes(q) || email.includes(q)
+  })
+
+  const thStyle = { padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6366f1', textTransform:'uppercase', letterSpacing:'0.08em', borderBottom:'1.5px solid #e0e7ff', whiteSpace:'nowrap' }
+  const tdStyle = { padding:'12px 14px', fontSize:13, color:'#1e1b4b', borderBottom:'1px solid #f0f2ff', verticalAlign:'middle' }
 
   return (
-    <>
-      <style>{`
-        @keyframes shimmer {
-          0%   { background-position: 200% 0 }
-          100% { background-position: -200% 0 }
-        }
-      `}</style>
+    <div style={{ padding:'32px 28px', fontFamily:'Inter,sans-serif', minHeight:'100vh', background:'#f8f9ff' }}>
+      {editTarget && (
+        <EditModal student={editTarget} onClose={() => setEditTarget(null)} onSaved={handleSaved} />
+      )}
 
-      {/* ── Page header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--txt)', lineHeight: 1.2 }}>Students</h1>
-          {!loading && (
-            <p style={{ fontSize: 12, color: 'var(--txt-muted)', marginTop: 4 }}>
-              {students.length} accounts&nbsp;·&nbsp;
-              <span style={{ color: pending > 0 ? '#ea580c' : 'var(--txt-muted)' }}>
-                {pending} pending face setup
-              </span>
-            </p>
-          )}
-        </div>
-
-        <button
-          onClick={() => navigate('/students/create')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '9px 18px', borderRadius: 9, border: 'none',
-            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-            color: '#fff', fontWeight: 700, fontSize: 14,
-            boxShadow: '0 2px 8px 0 rgb(5 150 105 / .25)',
-            cursor: 'pointer',
-          }}
-        >
-          <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
-          Add Student
-        </button>
-      </div>
-
-      {/* ── Table card ── */}
-      <div style={{
-        background: 'var(--card)',
-        borderRadius: 14,
-        border: '1px solid var(--bdr)',
-        boxShadow: 'var(--sh)',
-        overflow: 'hidden',
-      }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
-            <thead>
-              <tr style={{ background: '#eef2ff' }}>
-                {['Name', 'Email', 'Student ID', 'Dept · Duration', 'Enrolled', 'Face Setup', 'Status', 'Actions'].map(h => (
-                  <th key={h} style={{
-                    padding: '12px 16px',
-                    textAlign: 'left',
-                    fontSize: 12, fontWeight: 700,
-                    color: '#3730a3',
-                    letterSpacing: '0.04em',
-                    whiteSpace: 'nowrap',
-                    borderBottom: '2px solid #c7d2fe',
-                  }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading
-                ? Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} shade={i % 2 !== 0} />)
-                : students.map((s, i) => (
-                  <tr
-                    key={s.id}
-                    style={{ background: i % 2 === 0 ? '#fff' : '#f8f9ff', borderTop: '1px solid var(--bdr)' }}
-                  >
-                    {/* Name */}
-                    <td style={{ padding: '13px 16px', fontSize: 14, fontWeight: 600, color: 'var(--txt)', whiteSpace: 'nowrap' }}>
-                      {s.name}
-                    </td>
-
-                    {/* Email */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--txt-muted)', whiteSpace: 'nowrap' }}>
-                      {s.email}
-                    </td>
-
-                    {/* Student ID */}
-                    <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--pri)' }}>
-                        {s.student_id}
-                      </span>
-                    </td>
-
-                    {/* Dept · Duration */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--txt)', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontWeight: 600 }}>{s.department}</span>
-                      <span style={{ color: 'var(--txt-muted)' }}> · {s.program_duration_years}yr</span>
-                    </td>
-
-                    {/* Enrolled */}
-                    <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--txt-muted)', whiteSpace: 'nowrap' }}>
-                      {fmtDate(s.enroll_date)}
-                    </td>
-
-                    {/* Face Setup */}
-                    <td style={{ padding: '13px 16px' }}>
-                      {s.face_enrolled
-                        ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#059669' }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            Complete
-                          </span>
-                        ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#e11d48' }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                            Pending
-                          </span>
-                        )
-                      }
-                    </td>
-
-                    {/* Status */}
-                    <td style={{ padding: '13px 16px' }}>
-                      {statusBadge(s.is_active)}
-                    </td>
-
-                    {/* Actions */}
-                    <td style={{ padding: '13px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <button
-                          disabled={toggling === s.id}
-                          onClick={() => handleToggle(s)}
-                          style={{
-                            border: 'none', background: 'none',
-                            fontSize: 13, fontWeight: 600,
-                            cursor: toggling === s.id ? 'wait' : 'pointer',
-                            color: s.is_active ? 'var(--rose)' : 'var(--green)',
-                            opacity: toggling === s.id ? 0.5 : 1,
-                            padding: '3px 0',
-                          }}
-                        >
-                          {toggling === s.id ? '…' : s.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <span style={{ color: 'var(--bdr)', fontSize: 16 }}>|</span>
-                        <button
-                          disabled={toggling === s.id}
-                          onClick={() => handleDelete(s)}
-                          style={{
-                            border: 'none', background: 'none',
-                            fontSize: 13, fontWeight: 600,
-                            cursor: toggling === s.id ? 'wait' : 'pointer',
-                            color: '#94a3b8',
-                            opacity: toggling === s.id ? 0.5 : 1,
-                            padding: '3px 0',
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
-          </table>
-        </div>
-
-        {/* Info note */}
-        {!loading && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '11px 18px',
-            borderTop: '1px solid var(--bdr)',
-            background: 'var(--pri-light)',
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--pri)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <span style={{ fontSize: 12, color: 'var(--pri)', fontWeight: 500 }}>
-              Students with pending face setup cannot access the dashboard. On first login they are redirected to register their face before accessing schedule, attendance, or QR check-in.
-            </span>
-          </div>
-        )}
-      </div>
-
-      {deleteTarget && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
-          background: 'rgba(15,12,40,0.45)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 20,
-        }}
-          onClick={() => !deleteLoading && setDeleteTarget(null)}
-        >
-          <div style={{
-            background: '#fff', borderRadius: 16,
-            border: '1px solid var(--bdr)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-            padding: '28px 28px 24px',
-            maxWidth: 420, width: '100%',
-          }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Icon */}
-            <div style={{
-              width: 48, height: 48, borderRadius: 12,
-              background: 'var(--rose-light)',
-              border: '1px solid #fecdd3',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: 16,
-            }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--rose)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6"/><path d="M14 11v6"/>
-                <path d="M9 6V4h6v2"/>
-              </svg>
-            </div>
-
-            {/* Title */}
-            <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--txt)', marginBottom: 8 }}>
-              Delete Student Account
+      {/* Toggle confirm */}
+      {toggleTarget && (
+        <div style={{ position:'fixed',inset:0,zIndex:1000,background:'rgba(15,12,40,0.45)',display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
+          onClick={() => !toggleLoading && setToggleTarget(null)}>
+          <div style={{ background:'#fff',borderRadius:16,border:'1px solid #e0e7ff',boxShadow:'0 20px 60px rgba(0,0,0,0.18)',padding:'28px 28px 24px',maxWidth:420,width:'100%' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize:17,fontWeight:800,color:'#1e1b4b',marginBottom:8 }}>
+              {toggleTarget.is_active ? 'Deactivate Student Account' : 'Activate Student Account'}
             </h2>
-
-            {/* Body */}
-            <p style={{ fontSize: 14, color: 'var(--txt-muted)', lineHeight: 1.6, marginBottom: 6 }}>
-              You are about to permanently delete the account for:
-            </p>
-            <div style={{
-              background: '#f8f9ff', border: '1px solid var(--bdr)',
-              borderRadius: 9, padding: '10px 14px', marginBottom: 8,
-            }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt)', margin: 0 }}>{deleteTarget.name}</p>
-              <p style={{ fontSize: 12, color: 'var(--txt-muted)', margin: '2px 0 0' }}>{deleteTarget.email} · {deleteTarget.student_id}</p>
+            <div style={{ background:'#f8f9ff',border:'1px solid #e0e7ff',borderRadius:9,padding:'10px 14px',marginBottom:16 }}>
+              <p style={{ fontSize:14,fontWeight:700,color:'#1e1b4b',margin:0 }}>{[toggleTarget.first_name,toggleTarget.last_name].filter(Boolean).join(' ')}</p>
+              <p style={{ fontSize:12,color:'#94a3b8',margin:'2px 0 0' }}>{toggleTarget.email} · {toggleTarget.student_number}</p>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--rose)', fontWeight: 600, marginBottom: 24 }}>
-              This will delete all attendance records and face data. This action cannot be undone.
-            </p>
-
-            {/* Buttons */}
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleteLoading}
-                style={{
-                  padding: '9px 20px', borderRadius: 9,
-                  border: '1.5px solid var(--bdr)',
-                  background: '#fff', color: 'var(--txt-muted)',
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                }}
-              >
+            <div style={{ display:'flex',gap:10,justifyContent:'flex-end' }}>
+              <button onClick={() => setToggleTarget(null)} disabled={toggleLoading}
+                style={{ padding:'9px 20px',borderRadius:9,border:'1.5px solid #e0e7ff',background:'#fff',color:'#94a3b8',fontSize:14,fontWeight:600,cursor:'pointer' }}>
                 Cancel
               </button>
-              <button
-                onClick={confirmDelete}
-                disabled={deleteLoading}
-                style={{
-                  padding: '9px 20px', borderRadius: 9, border: 'none',
-                  background: deleteLoading ? '#fecdd3' : 'var(--rose)',
-                  color: '#fff', fontSize: 14, fontWeight: 700,
-                  cursor: deleteLoading ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 2px 8px rgba(244,63,94,0.25)',
-                }}
-              >
-                {deleteLoading ? 'Deleting…' : 'Yes, Delete'}
+              <button onClick={confirmToggle} disabled={toggleLoading}
+                style={{ padding:'9px 20px',borderRadius:9,border:'none',background:toggleTarget.is_active?'#d97706':'#059669',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer' }}>
+                {toggleLoading ? '…' : toggleTarget.is_active ? 'Yes, Deactivate' : 'Yes, Activate'}
               </button>
             </div>
           </div>
         </div>
       )}
-    </>
+
+      {/* Delete confirm */}
+      {deleteTarget && (
+        <div style={{ position:'fixed',inset:0,zIndex:1000,background:'rgba(15,12,40,0.45)',display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
+          onClick={() => !deleting && setDeleteTarget(null)}>
+          <div style={{ background:'#fff',borderRadius:16,border:'1px solid #e0e7ff',boxShadow:'0 20px 60px rgba(0,0,0,0.18)',padding:'28px 28px 24px',maxWidth:420,width:'100%' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize:17,fontWeight:800,color:'#1e1b4b',marginBottom:8 }}>Delete Student</h2>
+            <div style={{ background:'#fff1f2',border:'1px solid #fecdd3',borderRadius:9,padding:'10px 14px',marginBottom:16 }}>
+              <p style={{ fontSize:14,fontWeight:700,color:'#1e1b4b',margin:0 }}>{[deleteTarget.first_name,deleteTarget.last_name].filter(Boolean).join(' ')}</p>
+              <p style={{ fontSize:12,color:'#94a3b8',margin:'2px 0 0' }}>{deleteTarget.email} · {deleteTarget.student_number}</p>
+            </div>
+            <p style={{ fontSize:13,color:'#f43f5e',fontWeight:600,marginBottom:24 }}>This action cannot be undone.</p>
+            <div style={{ display:'flex',gap:10,justifyContent:'flex-end' }}>
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting}
+                style={{ padding:'9px 20px',borderRadius:9,border:'1.5px solid #e0e7ff',background:'#fff',color:'#94a3b8',fontSize:14,fontWeight:600,cursor:'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={confirmDelete} disabled={deleting}
+                style={{ padding:'9px 20px',borderRadius:9,border:'none',background:'#ef4444',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer' }}>
+                {deleting ? '…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24 }}>
+        <div>
+          <h1 style={{ fontSize:24,fontWeight:800,color:'#1e1b4b',margin:0 }}>Students</h1>
+          <p style={{ fontSize:13,color:'#94a3b8',marginTop:4 }}>{students.length} registered students</p>
+        </div>
+        <button onClick={() => navigate('/students/create')}
+          style={{ padding:'10px 20px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#4f46e5,#7c3aed)',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer' }}>
+          + New Student
+        </button>
+      </div>
+
+      {error && <div style={{ padding:'12px 16px',background:'#fff1f2',border:'1px solid #fecdd3',borderRadius:10,color:'#f43f5e',fontSize:13,marginBottom:16 }}>{error}</div>}
+
+      <div style={{ background:'#fff',borderRadius:16,border:'1px solid #e0e7ff',boxShadow:'0 4px 24px rgba(99,102,241,0.06)',overflow:'hidden' }}>
+        {/* Search */}
+        <div style={{ padding:'14px 18px',borderBottom:'1px solid #f0f2ff',display:'flex',alignItems:'center',gap:10 }}>
+          <div style={{ position:'relative',flex:1,maxWidth:360 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',pointerEvents:'none' }}>
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" placeholder="Search by name, student ID or email…" value={search} onChange={e => setSearch(e.target.value)}
+              style={{ width:'100%',paddingLeft:34,paddingRight:search?32:12,paddingTop:8,paddingBottom:8,border:'1.5px solid #e0e7ff',borderRadius:9,fontSize:13,color:'#1e1b4b',background:'#f8f9ff',outline:'none',boxSizing:'border-box' }} />
+            {search && <button onClick={() => setSearch('')} style={{ position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',border:'none',background:'none',cursor:'pointer',color:'#94a3b8',fontSize:16,lineHeight:1 }}>×</button>}
+          </div>
+          {search && <span style={{ fontSize:12,color:'#94a3b8' }}>{filtered.length} result{filtered.length!==1?'s':''}</span>}
+        </div>
+
+        <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%',borderCollapse:'collapse' }}>
+            <thead>
+              <tr>
+                {['Name','Email','Student ID','Department','Enrolled','Face Setup','Status','Actions'].map(h => (
+                  <th key={h} style={thStyle}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={COLS} style={{ ...tdStyle,textAlign:'center',color:'#94a3b8',padding:'40px 16px' }}>Loading…</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={COLS} style={{ ...tdStyle,textAlign:'center',color:'#94a3b8',padding:'40px 16px' }}>
+                  {search ? `No students match "${search}"` : 'No students found'}
+                </td></tr>
+              ) : filtered.map((s, i) => (
+                <tr key={s.id} style={{ background: i%2===0 ? '#fff' : '#fafbff' }}>
+                  <td style={tdStyle}>
+                    <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+                      <div style={{ width:34,height:34,borderRadius:10,background:'linear-gradient(135deg,#4f46e5,#7c3aed)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:13,fontWeight:700,flexShrink:0 }}>
+                        {[s.first_name,s.last_name].filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?'}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight:600,color:'#1e1b4b' }}>{[s.first_name,s.last_name].filter(Boolean).join(' ')||'—'}</div>
+                        <div style={{ fontSize:11,color:'#94a3b8' }}>Since {fmtDate(s.created_at)}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={tdStyle}>{s.email}</td>
+                  <td style={tdStyle}><span style={{ fontFamily:'monospace',fontWeight:600 }}>{s.student_number||'—'}</span></td>
+                  <td style={tdStyle}><span style={{ fontWeight:600 }}>{s.department||'—'}</span></td>
+                  <td style={tdStyle}>
+                    <span style={{ padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,background:'#f0f2ff',color:'#4f46e5' }}>CS101, CS201</span>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,
+                      background: s.face_enrolled ? '#ecfdf5' : '#fff1f2',
+                      color: s.face_enrolled ? '#059669' : '#f43f5e' }}>
+                      {s.face_enrolled ? 'Complete' : 'Pending'}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,
+                      background: s.is_active ? '#ecfdf5' : '#fff1f2',
+                      color: s.is_active ? '#059669' : '#f59e0b' }}>
+                      {s.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>
+                    <div style={{ display:'flex',gap:6,alignItems:'center' }}>
+                      <button onClick={() => setEditTarget(s)}
+                        style={{ padding:'5px 12px',borderRadius:8,border:'1.5px solid #4f46e5',background:'#f0f2ff',color:'#4f46e5',fontSize:12,fontWeight:600,cursor:'pointer' }}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleToggle(s)} disabled={toggling===s.id}
+                        style={{ padding:'5px 12px',borderRadius:8,border:`1.5px solid ${s.is_active?'#f59e0b':'#059669'}`,background:s.is_active?'#fffbeb':'#ecfdf5',color:s.is_active?'#d97706':'#059669',fontSize:12,fontWeight:600,cursor:'pointer' }}>
+                        {s.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button onClick={() => setDeleteTarget(s)}
+                        style={{ padding:'5px 12px',borderRadius:8,border:'1.5px solid #fecdd3',background:'#fff1f2',color:'#f43f5e',fontSize:12,fontWeight:600,cursor:'pointer' }}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   )
 }
