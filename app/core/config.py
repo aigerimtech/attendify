@@ -25,6 +25,10 @@ class Settings(BaseSettings):
         "http://172.16.1.70:5174",
         "http://172.16.1.70:3000",
         "http://172.16.1.70:8000",
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
+        "https://attendify-student.vercel.app",
+        "https://attendify-student-tawny.vercel.app",
     ]
 
     QR_TOKEN_EXPIRE_MINUTES: int = 15
@@ -49,4 +53,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

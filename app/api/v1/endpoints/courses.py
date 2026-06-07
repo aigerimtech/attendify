@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.core.deps import get_current_instructor, get_current_user
 from app.db.session import get_db
@@ -83,13 +83,39 @@ def delete_course(course_id: int, db: Session = Depends(get_db), current_user: U
     db.commit()
     return MessageResponse(message="Course deleted successfully")
 
+@router.get("/{course_id}/stats")
+def get_course_stats(course_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_instructor)):
+    instructor = _get_instructor(current_user, db)
+    course = db.query(Course).filter(Course.id == course_id, Course.instructor_id == instructor.id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    student_count = db.query(Enrollment).filter(Enrollment.course_id == course_id).count()
+    session_count = db.query(AttendanceSession).filter(AttendanceSession.course_id == course_id).count()
+    if session_count == 0 or student_count == 0:
+        attendance_rate = None
+    else:
+        attended = db.query(AttendanceRecord).join(
+            AttendanceSession, AttendanceRecord.session_id == AttendanceSession.id
+        ).filter(
+            AttendanceSession.course_id == course_id,
+            AttendanceRecord.face_validated == True,
+            AttendanceRecord.qr_validated == True,
+        ).count()
+        attendance_rate = round(attended / (student_count * session_count), 2)
+    return {"student_count": student_count, "session_count": session_count, "attendance_rate": attendance_rate}
+
 @router.post("/{course_id}/enroll", response_model=EnrollmentOut, status_code=201)
 def enroll_student(course_id: int, payload: EnrollmentCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_instructor)) -> EnrollmentOut:
     instructor = _get_instructor(current_user, db)
     course = db.query(Course).filter(Course.id == course_id, Course.instructor_id == instructor.id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    student = db.query(Student).filter(Student.id == payload.student_id).first()
+    if payload.student_number:
+        student = db.query(Student).filter(Student.student_number == payload.student_number).first()
+    elif payload.student_id is not None:
+        student = db.query(Student).filter(Student.id == payload.student_id).first()
+    else:
+        raise HTTPException(status_code=422, detail="Provide student_id or student_number")
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     if db.query(Enrollment).filter(Enrollment.student_id == student.id, Enrollment.course_id == course_id).first():
@@ -146,6 +172,36 @@ def list_course_students(course_id: int, db: Session = Depends(get_db), current_
             "total_sessions": total_sessions,
         })
     return result
+
+@router.get("/{course_id}/students/search")
+def search_students_for_course(
+    course_id: int,
+    q: str = Query("", min_length=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_instructor),
+) -> List[Dict[str, Any]]:
+    """Search all students by name or student number, indicating if already enrolled."""
+    _get_instructor(current_user, db)
+    enrolled_ids = {e.student_id for e in db.query(Enrollment).filter(Enrollment.course_id == course_id).all()}
+    query = db.query(Student).join(User, Student.user_id == User.id)
+    if q:
+        term = f"%{q}%"
+        query = query.filter(
+            User.first_name.ilike(term) |
+            User.last_name.ilike(term) |
+            Student.student_number.ilike(term)
+        )
+    students = query.limit(20).all()
+    return [
+        {
+            "student_id": s.id,
+            "student_number": s.student_number,
+            "full_name": s.user.full_name,
+            "email": s.user.email,
+            "already_enrolled": s.id in enrolled_ids,
+        }
+        for s in students
+    ]
 
 @router.post("/{course_id}/schedule", response_model=SetScheduleResponse, status_code=201)
 def set_course_schedule(course_id: int, payload: SetSchedulePayload, db: Session = Depends(get_db), current_user: User = Depends(get_current_instructor)) -> SetScheduleResponse:

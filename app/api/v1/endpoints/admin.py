@@ -23,20 +23,18 @@ def list_users(
 ) -> List[UserOut]:
     users = db.query(User).all()
     result = []
-    for u in users:
-        student = db.query(Student).filter(Student.user_id == u.id).first()
-        out = UserOut(
-            id=u.id,
-            email=u.email,
-            first_name=u.first_name,
-            last_name=u.last_name,
-            role=u.role,
-            is_active=u.is_active,
-            created_at=u.created_at,
-            student_number=student.student_number if student else None,
-            department=student.department if student else None,
-            face_enrolled=student.face_enrolled if student else None,
-        )
+    for user in users:
+        out = UserOut.model_validate(user)
+        student = db.query(Student).filter(Student.user_id == user.id).first()
+        if student:
+            out.face_enrolled = student.face_enrolled
+            out.student_number = student.student_number
+            out.department = student.department
+        instructor = db.query(Instructor).filter(Instructor.user_id == user.id).first()
+        if instructor:
+            out.department = instructor.department
+            out.title = instructor.title
+            out.instructor_id = instructor.id
         result.append(out)
     return result
 
@@ -175,3 +173,76 @@ def at_risk_students(
         ))
 
     return result
+
+
+from pydantic import BaseModel, EmailStr
+from typing import Optional as Opt
+
+class AdminEditUserPayload(BaseModel):
+    first_name: Opt[str] = None
+    last_name: Opt[str] = None
+    email: Opt[EmailStr] = None
+    department: Opt[str] = None
+    title: Opt[str] = None          # instructor only
+    student_number: Opt[str] = None # student only
+    new_password: Opt[str] = None
+
+
+@router.patch("/users/{user_id}/edit", response_model=UserOut)
+def edit_user(
+    user_id: int,
+    payload: AdminEditUserPayload,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+) -> UserOut:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if payload.first_name is not None:
+        user.first_name = payload.first_name
+    if payload.last_name is not None:
+        user.last_name = payload.last_name
+    if payload.email is not None:
+        existing = db.query(User).filter(User.email == payload.email, User.id != user_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user.email = payload.email
+    if payload.new_password is not None and payload.new_password.strip():
+        from app.core.security import get_password_hash
+        user.hashed_password = get_password_hash(payload.new_password)
+
+    # Student-specific fields
+    if payload.student_number is not None or payload.department is not None:
+        student = db.query(Student).filter(Student.user_id == user_id).first()
+        if student:
+            if payload.student_number is not None:
+                student.student_number = payload.student_number
+            if payload.department is not None:
+                student.department = payload.department
+
+    # Instructor-specific fields
+    if payload.title is not None or (payload.department is not None and not db.query(Student).filter(Student.user_id == user_id).first()):
+        instructor = db.query(Instructor).filter(Instructor.user_id == user_id).first()
+        if instructor:
+            if payload.title is not None:
+                instructor.title = payload.title
+            if payload.department is not None:
+                instructor.department = payload.department
+
+    db.commit()
+    db.refresh(user)
+
+    # Return enriched UserOut
+    out = UserOut.model_validate(user)
+    student = db.query(Student).filter(Student.user_id == user_id).first()
+    if student:
+        out.face_enrolled = student.face_enrolled
+        out.student_number = student.student_number
+        out.department = student.department
+    instructor = db.query(Instructor).filter(Instructor.user_id == user_id).first()
+    if instructor:
+        out.department = instructor.department
+        out.title = instructor.title
+        out.instructor_id = instructor.id
+    return out

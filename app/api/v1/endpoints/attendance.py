@@ -74,8 +74,8 @@ async def submit_attendance(
                 reference_vectors.append(json.loads(emb.photo_path))
         except Exception:
             pass
+    face_validated = similarity_score = 0.0
     face_validated = False
-    similarity_score = 0.0
     if reference_vectors:
         similarity_score = await ml_client.compare_embeddings(query_embedding, reference_vectors)
         face_validated = similarity_score >= settings.FACE_SIMILARITY_THRESHOLD
@@ -103,12 +103,12 @@ async def liveness_check(
 ) -> dict:
     """
     Standalone liveness check — no attendance record created.
-    Frontend polls this until is_live=True, then submits attendance once.
+    Returns {is_live, reason} from ML service.
     """
     client_key = request.query_params.get("client_key", str(current_user.id))
     image_bytes = await image.read()
-    is_live = await ml_client.check_liveness(image_bytes, client_key=client_key)
-    return {"is_live": is_live}
+    result = await ml_client.check_liveness(image_bytes, client_key=client_key)
+    return {"is_live": result["is_live"], "reason": result["reason"]}
 
 
 @router.get("/my", response_model=List[AttendanceOut])

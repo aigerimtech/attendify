@@ -44,6 +44,8 @@ class UserOut(UserBase):
     student_number: Optional[str] = None
     department: Optional[str] = None
     face_enrolled: Optional[bool] = None
+    title: Optional[str] = None
+    instructor_id: Optional[int] = None
     model_config = {"from_attributes": True}
 
 class UpdateProfilePayload(BaseModel):
@@ -176,7 +178,8 @@ class CourseWithInstructor(CourseOut):
     model_config = {"from_attributes": True}
 
 class EnrollmentCreate(BaseModel):
-    student_id: int
+    student_id: Optional[int] = None
+    student_number: Optional[str] = None
     course_id: int
 
 class EnrollmentOut(BaseModel):
@@ -202,8 +205,8 @@ class SessionOut(BaseModel):
     qr_expires_at: Optional[datetime] = None
     started_at: datetime
     ended_at: Optional[datetime] = None
-    attended_count: int = 0
-    enrolled_count: int = 0
+    attended_count: Optional[int] = 0
+    total_enrolled: Optional[int] = 0
     model_config = {"from_attributes": True}
 
 class SessionWithQR(SessionOut):

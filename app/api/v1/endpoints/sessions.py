@@ -62,23 +62,20 @@ def list_my_sessions(db: Session = Depends(get_db), current_user: User = Depends
         .order_by(AttendanceSession.started_at.desc())
         .all()
     )
-    return [
-        SessionOut(
+    result = []
+    for s in sessions:
+        attended = db.query(AttendanceRecord).filter(AttendanceRecord.session_id == s.id).count()
+        enrolled = db.query(Enrollment).filter(Enrollment.course_id == s.course_id).count()
+        result.append(SessionOut(
             id=s.id, course_id=s.course_id,
             course_code=s.course.code, course_name=s.course.name,
             title=s.title, status=s.status,
             qr_token=s.qr_token, qr_expires_at=s.qr_expires_at,
             started_at=s.started_at, ended_at=s.ended_at,
-            attended_count=db.query(AttendanceRecord).filter(
-                AttendanceRecord.session_id == s.id,
-                AttendanceRecord.face_validated == True,
-            ).count(),
-            enrolled_count=db.query(Enrollment).filter(
-                Enrollment.course_id == s.course_id,
-            ).count(),
-        )
-        for s in sessions
-    ]
+            attended_count=attended,
+            total_enrolled=enrolled,
+        ))
+    return result
 
 @router.post("/{session_id}/renew-qr", response_model=SessionWithQR)
 def renew_qr(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_instructor)) -> SessionWithQR:
@@ -239,11 +236,46 @@ def get_session_attendance(session_id: int, db: Session = Depends(get_db), curre
     total_enrolled = db.query(Enrollment).filter(Enrollment.course_id == session.course_id).count()
     records = db.query(AttendanceRecord).filter(AttendanceRecord.session_id == session_id).all()
     total_present = sum(1 for r in records if r.face_validated or r.qr_validated)
+    from app.schemas.schemas import AttendanceWithStudent, StudentOut, UserOut
+    enriched = []
+    for r in records:
+        try:
+            student = db.query(Student).filter(Student.id == r.student_id).first()
+            print(f"[DEBUG] record student_id={r.student_id} student={student}")
+            if not student or not student.user:
+                print(f"[DEBUG] student or user is None, skipping")
+                continue
+            user_out = UserOut(
+                id=student.user.id, email=student.user.email,
+                first_name=student.user.first_name, last_name=student.user.last_name,
+                role=student.user.role, is_active=student.user.is_active,
+                created_at=student.user.created_at,
+            )
+            student_out = StudentOut(
+                id=student.id, user_id=student.user_id,
+                student_number=student.student_number or "",
+                department=student.department, face_enrolled=student.face_enrolled,
+                user=user_out,
+            )
+            from app.schemas.schemas import AttendanceOut
+            att_out = AttendanceWithStudent(
+                id=r.id, session_id=r.session_id, student_id=r.student_id,
+                status=r.status, face_similarity_score=r.face_similarity_score,
+                qr_validated=r.qr_validated, face_validated=r.face_validated,
+                submitted_at=r.submitted_at,
+                student=student_out,
+            )
+            print(f"[DEBUG] appending att_out for student_id={r.student_id}")
+            enriched.append(att_out)
+        except Exception as e:
+            print(f"[DEBUG] enriched error: {e}")
+            continue
+    print(f"[DEBUG] enriched count: {len(enriched)}")
     return SessionAttendanceSummary(
         session_id=session.id, session_title=session.title,
         course_code=session.course.code, course_name=session.course.name,
         started_at=session.started_at, total_enrolled=total_enrolled,
         total_present=total_present,
         attendance_rate=round(total_present / total_enrolled * 100, 1) if total_enrolled > 0 else 0.0,
-        records=records,  # type: ignore[arg-type]
+        records=enriched,
     )
