@@ -241,9 +241,7 @@ def get_session_attendance(session_id: int, db: Session = Depends(get_db), curre
     for r in records:
         try:
             student = db.query(Student).filter(Student.id == r.student_id).first()
-            print(f"[DEBUG] record student_id={r.student_id} student={student}")
             if not student or not student.user:
-                print(f"[DEBUG] student or user is None, skipping")
                 continue
             user_out = UserOut(
                 id=student.user.id, email=student.user.email,
@@ -265,12 +263,9 @@ def get_session_attendance(session_id: int, db: Session = Depends(get_db), curre
                 submitted_at=r.submitted_at,
                 student=student_out,
             )
-            print(f"[DEBUG] appending att_out for student_id={r.student_id}")
             enriched.append(att_out)
         except Exception as e:
-            print(f"[DEBUG] enriched error: {e}")
             continue
-    print(f"[DEBUG] enriched count: {len(enriched)}")
     return SessionAttendanceSummary(
         session_id=session.id, session_title=session.title,
         course_code=session.course.code, course_name=session.course.name,
