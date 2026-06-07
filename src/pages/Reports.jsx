@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import * as XLSX from 'xlsx'
 import { useTheme } from '../context/ThemeContext'
 import { api } from '../api/client'
 import {
@@ -8,8 +9,6 @@ import {
   ChevronDown,
   Calendar,
   Play,
-  Mail,
-  ClockIcon,
   AlertTriangle,
   XCircle,
   CheckCircle2,
@@ -24,15 +23,16 @@ import { useNavigate } from 'react-router-dom'
 /* ── helpers ──────────────────────────────────────────────────── */
 function absenceRate(student) {
   if (student.absence_rate != null) return Math.round(student.absence_rate * 100)
+  if (student.attendance_rate != null) return Math.round((1 - student.attendance_rate / 100) * 100)
   if (student.absenceRate != null) return student.absenceRate
   return null
 }
 
-function riskLevel(rate) {
+function riskLevel(rate, threshold = 30) {
   if (rate === null) return 'unknown'
-  if (rate >= 30) return 'critical'
-  if (rate >= 15) return 'at-risk'
-  return 'present'
+  if (rate >= threshold) return 'critical'
+  if (rate >= threshold * 0.5) return 'at-risk'
+  return 'safe'
 }
 
 function getInitials(name = '') {
@@ -55,17 +55,17 @@ function Skeleton({ className = '' }) {
 }
 
 /* ── RiskBadge ────────────────────────────────────────────────── */
-function RiskBadge({ rate }) {
+function RiskBadge({ rate, threshold = 30 }) {
   if (rate === null) return <span className="text-xs text-slate-400">—</span>
-  const level = riskLevel(rate)
-  if (level === 'present')  return <span className="badge-present"><CheckCircle2 size={11} /> Present</span>
+  const level = riskLevel(rate, threshold)
+  if (level === 'safe')     return <span className="badge-present"><CheckCircle2 size={11} /> Safe</span>
   if (level === 'critical') return <span className="badge-critical"><XCircle size={11} /> CRITICAL</span>
   if (level === 'at-risk')  return <span className="badge-at-risk"><AlertTriangle size={11} /> AT RISK</span>
   return null
 }
 
 /* ── GaugeChart ───────────────────────────────────────────────── */
-function GaugeChart({ value, isDark }) {
+function GaugeChart({ value, isDark, threshold = 30 }) {
   if (value === null) {
     return (
       <div className="w-40 mx-auto flex items-center justify-center h-20 text-sm text-slate-400">
@@ -75,7 +75,7 @@ function GaugeChart({ value, isDark }) {
   }
   const clamp = Math.min(Math.max(value, 0), 100)
   const arcLen = (clamp / 100) * 157
-  const color = clamp >= 30 ? '#ef4444' : clamp >= 15 ? '#f59e0b' : '#10b981'
+  const color = clamp >= threshold ? '#ef4444' : clamp >= threshold * 0.5 ? '#f59e0b' : '#10b981'
   const textColor = isDark ? '#e2e8f0' : '#1e293b'
   const trackColor = isDark ? '#2e3748' : '#f1f5f9'
 
@@ -109,7 +109,7 @@ export default function Reports() {
 
   const [courses,         setCourses]         = useState([])
   const [students,        setStudents]        = useState([])
-  const [selectedCourse,  setSelectedCourse]  = useState(null)   // course object
+  const [selectedCourse,  setSelectedCourse]  = useState(null)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [loadingCourses,  setLoadingCourses]  = useState(true)
   const [loadingStudents, setLoadingStudents] = useState(false)
@@ -117,6 +117,14 @@ export default function Reports() {
   const [search,          setSearch]          = useState('')
   const [page,            setPage]            = useState(1)
   const [dateRange,       setDateRange]       = useState('30d')
+  const [threshold,       setThreshold]       = useState(30)
+
+  /* ── load system config (absence threshold) ── */
+  useEffect(() => {
+    api.get('/settings/system-config')
+      .then((cfg) => { if (cfg?.absence_threshold != null) setThreshold(cfg.absence_threshold) })
+      .catch(() => {})
+  }, [])
 
   /* ── load courses ── */
   useEffect(() => {
@@ -170,7 +178,7 @@ export default function Reports() {
           _absenceRate: absenceRate(s),
           _initials:    getInitials(s.full_name ?? s.name ?? ''),
           _color:       avatarColor(s.student_id ?? s.id),
-          _id:          String(s.student_id ?? s.id ?? ''),
+          _id:          String(s.student_number ?? s.student_id ?? s.id ?? ''),
           _name:        s.full_name ?? s.name ?? `Student #${s.id}`,
         }))
 
@@ -204,25 +212,36 @@ export default function Reports() {
   const avgAttendance = studentsWithData.length > 0
     ? Math.round(studentsWithData.reduce((sum, s) => sum + (100 - s._absenceRate), 0) / studentsWithData.length)
     : null
-  const atRiskCount = students.filter(s => s._absenceRate !== null && s._absenceRate >= 15).length
+  const atRiskCount = students.filter(s => s._absenceRate !== null && s._absenceRate >= threshold * 0.5).length
 
-  /* ── export CSV ── */
+  /* ── export XLSX ── */
   const handleExport = () => {
-    const headers = ['Student ID', 'Name', 'Absence Rate', 'Risk Level']
-    const rows = filtered.map(s => [
+    const courseCode = selectedCourse?.course_code ?? selectedCourse?.code ?? 'Course'
+    const courseName = selectedCourse?.name ?? selectedCourse?.course_name ?? ''
+    const exportDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+
+    // Title rows
+    const titleRows = [
+      [`${courseCode} – ${courseName}`],
+      [`Exported: ${exportDate}`],
+      [], // blank row
+      ['Student ID', 'Name', 'Absence Rate', 'Risk Level'],
+    ]
+    const dataRows = filtered.map(s => [
       s._id,
-      `"${s._name}"`,
+      s._name,
       s._absenceRate != null ? `${s._absenceRate}%` : '—',
-      riskLevel(s._absenceRate),
+      riskLevel(s._absenceRate, threshold),
     ])
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `report_${selectedCourse?.course_code ?? 'course'}_${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+
+    const ws = XLSX.utils.aoa_to_sheet([...titleRows, ...dataRows])
+
+    // Column widths
+    ws['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 14 }, { wch: 12 }]
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Report')
+    XLSX.writeFile(wb, `report_${courseCode}_${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
 
   return (
@@ -314,26 +333,30 @@ export default function Reports() {
                 </p>
               </div>
 
-              <GaugeChart value={selectedStudent._absenceRate} isDark={isDark} />
+              <GaugeChart value={selectedStudent._absenceRate} isDark={isDark} threshold={threshold} />
 
-              {selectedStudent._absenceRate >= 30 && (
-                <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl p-3 flex items-start gap-2">
-                  <AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-bold text-red-600">Critical Status</p>
-                    <p className="text-xs text-red-500">Absence rate exceeds the 30% warning threshold.</p>
+              {(() => {
+                const level = riskLevel(selectedStudent._absenceRate, threshold)
+                if (level === 'critical') return (
+                  <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl p-3 flex items-start gap-2">
+                    <AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-red-600">Critical Status</p>
+                      <p className="text-xs text-red-500">Absence rate exceeds the {threshold}% warning threshold.</p>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button className="btn-secondary text-xs justify-center py-2">
-                  <Mail size={13} /> Contact
-                </button>
-                <button className="btn-secondary text-xs justify-center py-2">
-                  <ClockIcon size={13} /> History
-                </button>
-              </div>
+                )
+                if (level === 'at-risk') return (
+                  <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-3 flex items-start gap-2">
+                    <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-amber-600">At Risk</p>
+                      <p className="text-xs text-amber-500">Absence rate is approaching the {threshold}% threshold.</p>
+                    </div>
+                  </div>
+                )
+                return null
+              })()}
             </>
           ) : (
             <div className="text-center py-8 text-sm text-slate-400">
@@ -440,7 +463,7 @@ export default function Reports() {
                     {s._absenceRate != null ? `${s._absenceRate}% absent` : '—'}
                   </p>
                   <div className="flex justify-end">
-                    <RiskBadge rate={s._absenceRate} />
+                    <RiskBadge rate={s._absenceRate} threshold={threshold} />
                   </div>
                 </div>
               ))
@@ -476,4 +499,3 @@ export default function Reports() {
     </div>
   )
 }
-

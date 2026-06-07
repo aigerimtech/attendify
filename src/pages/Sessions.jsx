@@ -113,7 +113,7 @@ export default function Sessions() {
       // sort newest first
       list.sort((a, b) => {
         const da = new Date(a.started_at || a.date || a.created_at || 0)
-        const db = new Date(b.date || b.created_at || 0)
+        const db = new Date(b.started_at || b.date || b.created_at || 0)
         return db - da
       })
       setSessions(list)
@@ -129,11 +129,19 @@ export default function Sessions() {
   /* ── derived ── */
   const filtered = sessions.filter((s) => {
     const norm = normStatus(s.status)
-    const q = search.toLowerCase()
-    const matchSearch =
-      (s.course_name ?? s.course_code ?? '').toLowerCase().includes(q) ||
+    const q = search.toLowerCase().trim()
+    const dateStr = s.started_at || s.date || s.created_at
+    const fmtFull  = dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase() : ''
+    const fmtShort = dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase() : ''
+    const fmtIso   = dateStr ? new Date(dateStr).toISOString().slice(0, 10) : '' // "2026-06-04"
+    const matchSearch = !q ||
+      (s.course_name ?? '').toLowerCase().includes(q) ||
       (s.course_code ?? '').toLowerCase().includes(q) ||
-      (s.location ?? '').toLowerCase().includes(q)
+      (s.title ?? '').toLowerCase().includes(q) ||
+      (s.location ?? '').toLowerCase().includes(q) ||
+      fmtFull.includes(q) ||
+      fmtShort.includes(q) ||
+      fmtIso.includes(q)
     const matchFilter = filter === 'all' || norm === filter
     return matchSearch && matchFilter
   })
@@ -150,7 +158,7 @@ export default function Sessions() {
     const headers = ['Date', 'Course', 'Code', 'Location', 'Time', 'Attended', 'Enrolled', 'Percentage', 'Status']
     const rows = filtered.map((s) => {
       const attended = s.attended_count ?? 0
-      const total    = s.enrolled_count ?? s.total ?? 0
+      const total    = s.total_enrolled ?? s.enrolled_count ?? s.total ?? 0
       const pct      = total > 0 ? `${Math.round((attended / total) * 100)}%` : '—'
       return [
         fmtDate(s.started_at || s.date || s.created_at),
@@ -226,7 +234,7 @@ export default function Sessions() {
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search sessions..."
+              placeholder="Search by course, date (e.g. Jun 4)…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-600"
@@ -276,7 +284,7 @@ export default function Sessions() {
           ) : filtered.map((s) => {
             const norm     = normStatus(s.status)
             const attended = s.attended_count ?? 0
-            const total    = s.enrolled_count ?? s.total ?? 0
+            const total    = s.total_enrolled ?? s.enrolled_count ?? s.total ?? 0
             const pct      = total > 0 ? Math.round((attended / total) * 100) : 0
             const dateStr  = s.started_at || s.date || s.created_at
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Search,
   Plus,
@@ -14,6 +14,8 @@ import {
   X,
   AlertCircle,
   Loader2,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react'
 import { useToast } from '../context/ToastContext'
 import { api } from '../api/client'
@@ -51,13 +53,317 @@ function Skeleton({ className = '' }) {
   return <div className={`animate-pulse bg-slate-100 dark:bg-slate-800 rounded-xl ${className}`} />
 }
 
+/* ── Delete confirm modal ─────────────────────────────────────── */
+/* ── ManageStudentsModal ──────────────────────────────────────── */
+function ManageStudentsModal({ course, onClose }) {
+  const [enrolled,     setEnrolled]     = useState([])
+  const [loadingList,  setLoadingList]  = useState(true)
+  const [query,        setQuery]        = useState('')
+  const [suggestions,  setSuggestions]  = useState([])
+  const [searching,    setSearching]    = useState(false)
+  const [showDrop,     setShowDrop]     = useState(false)
+  const [adding,       setAdding]       = useState(false)
+  const [addError,     setAddError]     = useState('')
+  const [addSuccess,   setAddSuccess]   = useState('')
+  const [removeTarget, setRemoveTarget] = useState(null)
+  const [removing,     setRemoving]     = useState({})
+  const [listError,    setListError]    = useState('')
+  const debounceRef = useRef(null)
+  const inputRef    = useRef(null)
+  const dropRef     = useRef(null)
+
+  const courseId = course.id
+
+  const loadEnrolled = useCallback(async () => {
+    setLoadingList(true)
+    try {
+      const data = await api.get(`/courses/${courseId}/students`)
+      setEnrolled(Array.isArray(data) ? data : [])
+    } catch {
+      setListError('Failed to load students.')
+    } finally {
+      setLoadingList(false)
+    }
+  }, [courseId])
+
+  useEffect(() => { loadEnrolled() }, [loadEnrolled])
+
+  // Debounced search for suggestions
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    if (!query.trim()) { setSuggestions([]); setShowDrop(false); return }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const data = await api.get(`/courses/${courseId}/students/search?q=${encodeURIComponent(query)}`)
+        setSuggestions(Array.isArray(data) ? data : [])
+        setShowDrop(true)
+      } catch { setSuggestions([]) }
+      finally { setSearching(false) }
+    }, 350)
+    return () => clearTimeout(debounceRef.current)
+  }, [query, courseId])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handle = (e) => {
+      if (!dropRef.current?.contains(e.target) && !inputRef.current?.contains(e.target)) {
+        setShowDrop(false)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [])
+
+  const enrollById = async (studentId, label) => {
+    setAdding(true); setAddError(''); setAddSuccess('')
+    try {
+      await api.post(`/courses/${courseId}/enroll`, { student_id: studentId, course_id: courseId })
+      setAddSuccess(`${label} enrolled successfully.`)
+      setQuery(''); setSuggestions([]); setShowDrop(false)
+      await loadEnrolled()
+    } catch (err) {
+      const msg = (err.message || '').toLowerCase()
+      if (msg.includes('already enrolled')) setAddError('Student is already enrolled in this course.')
+      else setAddError(err.message || 'Failed to enroll student.')
+    } finally { setAdding(false) }
+  }
+
+  const enrollByNumber = async () => {
+    const num = query.trim()
+    if (!num) return
+    setAdding(true); setAddError(''); setAddSuccess('')
+    try {
+      await api.post(`/courses/${courseId}/enroll`, { student_number: num, course_id: courseId })
+      setAddSuccess(`Student ${num} enrolled successfully.`)
+      setQuery(''); setSuggestions([]); setShowDrop(false)
+      await loadEnrolled()
+    } catch (err) {
+      const msg = (err.message || '').toLowerCase()
+      if (msg.includes('not found')) setAddError('Student not found. Check the student number.')
+      else if (msg.includes('already enrolled')) setAddError('Student is already enrolled in this course.')
+      else setAddError(err.message || 'Failed to enroll student.')
+    } finally { setAdding(false) }
+  }
+
+  const confirmRemove = async () => {
+    if (!removeTarget) return
+    const student = removeTarget
+    setRemoveTarget(null)
+    setRemoving(r => ({ ...r, [student.student_id]: true }))
+    try {
+      await api.delete(`/courses/${courseId}/enroll/${student.student_id}`)
+      setEnrolled(list => list.filter(s => s.student_id !== student.student_id))
+    } catch (err) {
+      setListError(err.message || 'Failed to remove student.')
+    } finally {
+      setRemoving(r => ({ ...r, [student.student_id]: false }))
+    }
+  }
+
+  const courseName = course.name ?? course.course_name ?? ''
+  const courseCode = course.course_code ?? course.code ?? ''
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+
+      {/* Remove confirmation */}
+      {removeTarget && (
+        <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
+          <div className="card w-full max-w-sm p-6 fade-in shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <UserMinus size={18} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Remove Student</h3>
+                <p className="text-xs text-slate-400 mt-0.5">This will unenroll the student.</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">
+              Are you sure you want to remove <span className="font-semibold text-slate-800 dark:text-slate-100">"{removeTarget.full_name}"</span> from this course?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setRemoveTarget(null)} className="btn-secondary flex-1 justify-center">Cancel</button>
+              <button
+                onClick={confirmRemove}
+                className="flex-1 justify-center flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
+              >
+                Yes, Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="card w-full max-w-lg fade-in flex flex-col" style={{ maxHeight: '85vh' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+          <div>
+            <h3 className="font-bold text-slate-800 dark:text-slate-100">Manage Students</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{courseCode} – {courseName}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+
+          {/* Add student — search or student number */}
+          <div>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Add Student</p>
+            <div className="flex gap-2 relative">
+              <div className="flex-1 relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Name or student number…"
+                  value={query}
+                  onChange={e => { setQuery(e.target.value); setAddError(''); setAddSuccess('') }}
+                  onKeyDown={e => { if (e.key === 'Enter') { setShowDrop(false); enrollByNumber() } if (e.key === 'Escape') setShowDrop(false) }}
+                  onFocus={() => suggestions.length > 0 && setShowDrop(true)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-600"
+                />
+                {searching && <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />}
+
+                {/* Dropdown suggestions */}
+                {showDrop && suggestions.length > 0 && (
+                  <div ref={dropRef} className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 overflow-hidden">
+                    {suggestions.map(s => (
+                      <button
+                        key={s.student_id}
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => !s.already_enrolled && enrollById(s.student_id, s.full_name)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left border-b last:border-0 border-slate-100 dark:border-slate-800 transition-colors ${s.already_enrolled ? 'opacity-60 cursor-default' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer'}`}
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{s.full_name}</p>
+                          <p className="text-xs text-slate-400">{s.student_number}</p>
+                        </div>
+                        {s.already_enrolled
+                          ? <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-lg">Enrolled</span>
+                          : <span className="text-xs text-primary-600 font-semibold flex items-center gap-1"><UserPlus size={11} /> Add</span>
+                        }
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => { setShowDrop(false); enrollByNumber() }}
+                disabled={adding || !query.trim()}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              >
+                {adding ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                Add
+              </button>
+            </div>
+            {addError && (
+              <div className="flex items-center gap-2 mt-2 text-xs px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500">
+                <AlertCircle size={12} /> {addError}
+              </div>
+            )}
+            {addSuccess && (
+              <div className="mt-2 text-xs px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 font-medium">
+                ✓ {addSuccess}
+              </div>
+            )}
+          </div>
+
+          {/* Enrolled list */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Enrolled Students</p>
+              <span className="text-xs font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-2 py-0.5 rounded-full">{enrolled.length}</span>
+            </div>
+            {listError && (
+              <div className="flex items-center gap-2 mb-2 text-xs px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500">
+                <AlertCircle size={12} /> {listError}
+                <button onClick={() => setListError('')} className="ml-auto"><X size={12} /></button>
+              </div>
+            )}
+
+            {loadingList ? (
+              <div className="flex items-center gap-2 text-sm text-slate-400 py-4 justify-center">
+                <Loader2 size={14} className="animate-spin" /> Loading…
+              </div>
+            ) : enrolled.length === 0 ? (
+              <div className="text-center py-6 text-sm text-slate-400">No students enrolled yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {enrolled.map(s => (
+                  <div key={s.student_id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-primary-600 text-xs font-bold flex-shrink-0">
+                        {(s.full_name ?? '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{s.full_name}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{s.student_number} · {Math.round((s.attendance_rate ?? 0) * 100)}% attendance</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setRemoveTarget(s)}
+                      disabled={removing[s.student_id]}
+                      className="flex items-center gap-1 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-2.5 py-1.5 rounded-lg disabled:opacity-60"
+                    >
+                      {removing[s.student_id] ? <Loader2 size={11} className="animate-spin" /> : <UserMinus size={11} />}
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
+          <button onClick={onClose} className="btn-secondary w-full justify-center">Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DeleteConfirmModal({ courseName, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="card w-full max-w-sm p-6 fade-in">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+            <Trash2 size={18} className="text-red-500" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800 dark:text-slate-100">Delete Course</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">This action cannot be undone.</p>
+          </div>
+        </div>
+        <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">
+          Are you sure you want to delete <span className="font-semibold text-slate-800 dark:text-slate-100">"{courseName}"</span>?
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="btn-secondary flex-1 justify-center">Cancel</button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 justify-center flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
+          >
+            Yes, Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── CourseCard ───────────────────────────────────────────────── */
-function CourseCard({ course, palette, onEdit, onDelete, onEnroll }) {
+function CourseCard({ course, palette, onEdit, onDelete, onManage }) {
   const [menu, setMenu] = useState(false)
 
   const attendance = course.attendance_rate != null
     ? Math.round(course.attendance_rate * 100)
-    : (course.attendance ?? 0)
+    : null
 
   return (
     <div className="card p-6 hover:shadow-md transition-shadow group">
@@ -82,7 +388,7 @@ function CourseCard({ course, palette, onEdit, onDelete, onEnroll }) {
                 <Edit size={13} /> Edit
               </button>
               <button
-                onClick={() => { onDelete(course.id); setMenu(false) }}
+                onClick={() => { onDelete(course); setMenu(false) }}
                 className="w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
               >
                 <Trash2 size={13} /> Delete
@@ -107,61 +413,95 @@ function CourseCard({ course, palette, onEdit, onDelete, onEnroll }) {
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5 text-center">
           <p className="text-lg font-bold text-slate-800 dark:text-slate-100">
-            {course.student_count ?? course.students ?? '—'}
+            {course.student_count ?? 0}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500">Students</p>
         </div>
         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5 text-center">
           <p className="text-lg font-bold text-slate-800 dark:text-slate-100">
-            {course.session_count ?? course.sessions ?? '—'}
+            {course.session_count ?? 0}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500">Sessions</p>
         </div>
         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2.5 text-center">
-          <p className={`text-lg font-bold ${attendance >= 90 ? 'text-emerald-600' : 'text-amber-600'}`}>
-            {course.attendance_rate != null ? `${attendance}%` : '—'}
+          <p className={`text-lg font-bold ${attendance == null ? 'text-slate-400' : attendance >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {attendance != null ? `${attendance}%` : '—'}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500">Attend.</p>
         </div>
       </div>
 
-      {course.attendance_rate != null && (
-        <div className="mb-4">
-          <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${attendance}%`, background: palette.iconBg }}
-            />
+      <div className="mb-4">
+        <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${attendance ?? 0}%`, background: palette.iconBg }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => onEdit(course)}
+            className="text-sm font-semibold text-primary-600 hover:underline flex items-center gap-1"
+          >
+            View Details <ChevronRight size={14} />
+          </button>
+          <div className="flex items-center gap-1 text-xs text-emerald-600">
+            <TrendingUp size={12} />
+            Active
           </div>
         </div>
-      )}
-
-      <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-        <button onClick={() => onEnroll(course)} className="text-sm font-semibold text-primary-600 hover:underline flex items-center gap-1">
-          Manage Students <ChevronRight size={14} />
+        <button
+          onClick={() => onManage(course)}
+          className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 py-2 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors"
+        >
+          <Users size={13} /> Manage Students
         </button>
-        <div className="flex items-center gap-1 text-xs text-emerald-600">
-          <TrendingUp size={12} />
-          Active
-        </div>
       </div>
     </div>
   )
 }
 
 /* ── Modal (Create / Edit) ────────────────────────────────────── */
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+const DAY_LABELS = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri' }
+
 function Modal({ onClose, onSave, editCourse, saving }) {
   const [form, setForm] = useState({
     code:       editCourse?.course_code ?? editCourse?.code ?? '',
     name:       editCourse?.name ?? editCourse?.course_name ?? '',
     semester:   editCourse?.semester ?? 'Fall 2025',
-    location:   editCourse?.location ?? '',
-    schedule:   editCourse?.schedule ?? '',
     colorIndex: editCourse
       ? (getColorMap()[editCourse.id] ?? 0) % colorOptions.length
       : 0,
   })
-  const [errors, setErrors] = useState({})
+  const [errors,       setErrors]       = useState({})
+  const [slots,        setSlots]        = useState([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // Load existing schedule when editing
+  useEffect(() => {
+    if (!editCourse?.id) return
+    setLoadingSlots(true)
+    api.get(`/courses/${editCourse.id}/schedule`)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : []
+        setSlots(list.map((s) => ({
+          day_of_week: s.day_of_week,
+          start_time:  s.start_time,
+          end_time:    s.end_time,
+          room:        s.room ?? '',
+        })))
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSlots(false))
+  }, [editCourse?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const addSlot    = ()         => { if (slots.length < 5) setSlots([...slots, { day_of_week: 'monday', start_time: '09:00', end_time: '10:30', room: '' }]) }
+  const removeSlot = (i)        => setSlots(slots.filter((_, idx) => idx !== i))
+  const updateSlot = (i, f, v)  => setSlots(slots.map((s, idx) => idx === i ? { ...s, [f]: v } : s))
 
   const validate = () => {
     const e = {}
@@ -174,24 +514,20 @@ function Modal({ onClose, onSave, editCourse, saving }) {
     const e = validate()
     if (Object.keys(e).length > 0) { setErrors(e); return }
     onSave({
-      code:       form.code.trim(),       // backend field name
+      code:       form.code.trim(),
       name:       form.name.trim(),
-      description: form.location.trim() || form.schedule.trim()
-        ? `${form.location.trim()}${form.schedule.trim() ? ' · ' + form.schedule.trim() : ''}`.trim()
-        : undefined,
-      // kept locally for display
-      _location:  form.location.trim(),
-      _schedule:  form.schedule.trim(),
       colorIndex: form.colorIndex,
+      slots,
     })
   }
 
   const inputCls = (hasErr) =>
     `w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-600 ${hasErr ? 'border-red-400' : 'border-slate-200 dark:border-slate-700'}`
+  const smCls = `px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary-600`
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="card w-full max-w-md p-6 fade-in">
+      <div className="card w-full max-w-lg p-6 fade-in" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
             {editCourse ? 'Edit Course' : 'Create New Course'}
@@ -224,40 +560,59 @@ function Modal({ onClose, onSave, editCourse, saving }) {
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Semester</label>
-              <select
-                value={form.semester}
-                onChange={(e) => setForm({ ...form, semester: e.target.value })}
-                className={inputCls(false)}
-              >
-                <option>Fall 2025</option>
-                <option>Spring 2026</option>
-                <option>Summer 2026</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Location</label>
-              <input
-                type="text"
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-                placeholder="e.g. Lab 3"
-                className={inputCls(false)}
-              />
-            </div>
-          </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Schedule</label>
-            <input
-              type="text"
-              value={form.schedule}
-              onChange={(e) => setForm({ ...form, schedule: e.target.value })}
-              placeholder="e.g. Mon, Wed · 10:00 AM – 11:30 AM"
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Semester</label>
+            <select
+              value={form.semester}
+              onChange={(e) => setForm({ ...form, semester: e.target.value })}
               className={inputCls(false)}
-            />
+            >
+              <option>Fall 2025</option>
+              <option>Spring 2026</option>
+              <option>Summer 2026</option>
+            </select>
           </div>
+
+          {/* ── Schedule slots ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Schedule {loadingSlots && <span className="font-normal text-slate-400">(loading…)</span>}
+              </label>
+              {slots.length < 5 && (
+                <button type="button" onClick={addSlot}
+                  className="text-xs font-semibold text-primary-600 hover:underline flex items-center gap-1">
+                  <Plus size={12} /> Add time slot
+                </button>
+              )}
+            </div>
+
+            {slots.length === 0 && !loadingSlots && (
+              <button type="button" onClick={addSlot}
+                className="w-full py-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-400 hover:border-primary-400 hover:text-primary-500 transition-colors">
+                + Add a time slot (optional)
+              </button>
+            )}
+
+            <div className="space-y-2">
+              {slots.map((slot, i) => (
+                <div key={i} className="flex gap-1.5 items-center bg-slate-50 dark:bg-slate-800/40 rounded-xl px-3 py-2">
+                  <select value={slot.day_of_week} onChange={(e) => updateSlot(i, 'day_of_week', e.target.value)} className={smCls + ' w-16'}>
+                    {DAYS.map((d) => <option key={d} value={d}>{DAY_LABELS[d]}</option>)}
+                  </select>
+                  <input type="time" value={slot.start_time} onChange={(e) => updateSlot(i, 'start_time', e.target.value)} className={smCls + ' w-24'} />
+                  <span className="text-slate-400 text-xs">–</span>
+                  <input type="time" value={slot.end_time} onChange={(e) => updateSlot(i, 'end_time', e.target.value)} className={smCls + ' w-24'} />
+                  <input type="text" value={slot.room} onChange={(e) => updateSlot(i, 'room', e.target.value)} placeholder="Room" className={smCls + ' flex-1 min-w-0'} />
+                  <button type="button" onClick={() => removeSlot(i)}
+                    className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0">
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Color</label>
             <div className="flex gap-2">
@@ -288,111 +643,19 @@ function Modal({ onClose, onSave, editCourse, saving }) {
   )
 }
 
-
-/* ── EnrollModal ──────────────────────────────────────────────────── */
-function EnrollModal({ course, onClose, addToast }) {
-  const [students, setStudents] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [studentId, setStudentId] = useState('')
-  const [adding, setAdding] = useState(false)
-
-  const fetchStudents = async () => {
-    try {
-      const data = await api.get(`/courses/${course.id}/students`)
-      setStudents(Array.isArray(data) ? data : [])
-    } catch {}
-    finally { setLoading(false) }
-  }
-
-  useEffect(() => { fetchStudents() }, [])
-
-  const handleAdd = async () => {
-    const id = parseInt(studentId.trim())
-    if (!id) { addToast('Enter a valid Student ID', 'error'); return }
-    setAdding(true)
-    try {
-      await api.post(`/courses/${course.id}/enroll`, { student_id: id, course_id: course.id })
-      addToast('Student enrolled successfully')
-      setStudentId('')
-      fetchStudents()
-    } catch (err) {
-      addToast(err.message || 'Failed to enroll student', 'error')
-    } finally { setAdding(false) }
-  }
-
-  const handleRemove = async (studentId) => {
-    try {
-      await api.delete(`/courses/${course.id}/enroll/${studentId}`)
-      addToast('Student removed')
-      setStudents(prev => prev.filter(s => s.student_id !== studentId))
-    } catch (err) {
-      addToast(err.message || 'Failed to remove student', 'error')
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="card w-full max-w-lg p-6 fade-in max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
-            {course.name ?? course.course_name} — Students
-          </h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800">
-            <X size={16} className="text-slate-500" />
-          </button>
-        </div>
-
-        <div className="flex gap-2 mb-4">
-          <input
-            type="number"
-            placeholder="Student ID"
-            value={studentId}
-            onChange={e => setStudentId(e.target.value)}
-            className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-600"
-          />
-          <button onClick={handleAdd} disabled={adding} className="btn-primary px-4">
-            {adding ? <Loader2 size={14} className="animate-spin" /> : <><Plus size={14} /> Add</>}
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1">
-          {loading ? (
-            <p className="text-sm text-slate-400 text-center py-8">Loading…</p>
-          ) : students.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">No students enrolled yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {students.map(s => (
-                <div key={s.student_id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{s.full_name}</p>
-                    <p className="text-xs text-slate-400">{s.email} · #{s.student_number}</p>
-                  </div>
-                  <button onClick={() => handleRemove(s.student_id)} className="text-red-400 hover:text-red-600 transition-colors">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* ── Main Page ────────────────────────────────────────────────── */
 export default function Courses() {
   const { addToast } = useToast()
   const [courses,    setCourses]    = useState([])
   const [loading,    setLoading]    = useState(true)
-  const [saving,     setSaving]     = useState(false)
-  const [error,      setError]      = useState('')
-  const [search,     setSearch]     = useState('')
-  const [showModal,  setShowModal]  = useState(false)
-  const [editCourse, setEditCourse] = useState(null)
-  const [colorMap,   setColorMap]   = useState(getColorMap)
-  const [enrollCourse, setEnrollCourse] = useState(null)
+  const [saving,        setSaving]        = useState(false)
+  const [error,         setError]         = useState('')
+  const [search,        setSearch]        = useState('')
+  const [showModal,     setShowModal]     = useState(false)
+  const [editCourse,    setEditCourse]    = useState(null)
+  const [colorMap,      setColorMap]      = useState(getColorMap)
+  const [deleteTarget,  setDeleteTarget]  = useState(null) // { id, name }
+  const [manageTarget,  setManageTarget]  = useState(null) // course object
 
   const fetchCourses = useCallback(async () => {
     setLoading(true)
@@ -400,7 +663,18 @@ export default function Courses() {
     try {
       const data = await api.get('/courses')
       const list = Array.isArray(data) ? data : (data?.courses ?? [])
-      setCourses(list)
+      // Fetch stats for each course in parallel
+      const withStats = await Promise.all(
+        list.map(async (c) => {
+          try {
+            const stats = await api.get(`/courses/${c.id}/stats`)
+            return { ...c, ...stats }
+          } catch {
+            return c
+          }
+        })
+      )
+      setCourses(withStats)
     } catch (err) {
       setError(err.message || 'Failed to load courses.')
     } finally {
@@ -425,14 +699,20 @@ export default function Courses() {
     setColorMap(map)
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this course? This cannot be undone.')) return
+  const handleDelete = (course) => {
+    setDeleteTarget({ id: course.id, name: course.name ?? course.course_name ?? 'this course' })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     try {
-      await api.delete(`/courses/${id}`)
-      setCourses((prev) => prev.filter((c) => c.id !== id))
+      await api.delete(`/courses/${deleteTarget.id}`)
+      setCourses((prev) => prev.filter((c) => c.id !== deleteTarget.id))
       addToast('Course deleted', 'error')
     } catch (err) {
       addToast(err.message || 'Failed to delete course.', 'error')
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -444,23 +724,36 @@ export default function Courses() {
   const handleSave = async (formData) => {
     setSaving(true)
     try {
-      // Backend accepts: { code, name, description }
       const payload = {
-        code:        formData.code,
-        name:        formData.name,
-        description: formData.description,
+        code: formData.code,
+        name: formData.name,
       }
 
+      let courseId
       if (editCourse) {
         const updated = await api.patch(`/courses/${editCourse.id}`, payload)
         setCourses((prev) => prev.map((c) => c.id === editCourse.id ? { ...c, ...updated } : c))
         assignColor(editCourse.id, formData.colorIndex)
+        courseId = editCourse.id
         addToast('Course updated successfully')
       } else {
         const created = await api.post('/courses', payload)
         assignColor(created.id, formData.colorIndex)
         setCourses((prev) => [...prev, created])
+        courseId = created.id
         addToast('Course created successfully')
+      }
+
+      // Save schedule slots if any were provided
+      if (formData.slots && formData.slots.length > 0) {
+        await api.post(`/courses/${courseId}/schedule`, {
+          schedule: formData.slots.map((s) => ({
+            day_of_week: s.day_of_week,
+            start_time:  s.start_time,
+            end_time:    s.end_time,
+            room:        s.room || null,
+          })),
+        })
       }
 
       setShowModal(false)
@@ -474,19 +767,25 @@ export default function Courses() {
 
   return (
     <div className="fade-in">
-      {enrollCourse && (
-        <EnrollModal
-          course={enrollCourse}
-          onClose={() => setEnrollCourse(null)}
-          addToast={addToast}
-        />
-      )}
       {showModal && (
         <Modal
           onClose={() => { setShowModal(false); setEditCourse(null) }}
           onSave={handleSave}
           editCourse={editCourse}
           saving={saving}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          courseName={deleteTarget.name}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+      {manageTarget && (
+        <ManageStudentsModal
+          course={manageTarget}
+          onClose={() => setManageTarget(null)}
         />
       )}
 
@@ -574,7 +873,7 @@ export default function Courses() {
                   palette={palette}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
-                  onEnroll={setEnrollCourse}
+                  onManage={setManageTarget}
                 />
               )
             })
@@ -597,4 +896,3 @@ export default function Courses() {
     </div>
   )
 }
-

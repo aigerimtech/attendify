@@ -132,20 +132,6 @@ function SetupScreen({ courses, loadingCourses, onStart }) {
             )}
           </div>
 
-          <div
-            className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-colors ${geoFence ? 'bg-primary-50 dark:bg-primary-900/20' : 'bg-slate-50 dark:bg-slate-800/50'}`}
-            onClick={() => setGeoFence(v => !v)}
-          >
-            <div className={`w-5 h-5 rounded flex items-center justify-center mt-0.5 flex-shrink-0 transition-colors ${geoFence ? 'bg-primary-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
-              {geoFence && <CheckCircle size={13} className="text-white" />}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                <Shield size={13} className="text-primary-600" /> Enable Geo-Fencing
-              </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Require students to be within campus radius.</p>
-            </div>
-          </div>
         </div>
 
         {error && (
@@ -174,7 +160,7 @@ export default function LiveSession() {
   const navigate = useNavigate()
   const { addToast } = useToast()
 
-  const [phase,        setPhase]        = useState('setup')   // 'setup' | 'active'
+  const [phase,        setPhase]        = useState('setup')   // 'setup' | 'active' | 'checking'
   const [courses,      setCourses]      = useState([])
   const [loadingC,     setLoadingC]     = useState(true)
   const [session,      setSession]      = useState(null)       // session object from API
@@ -198,6 +184,47 @@ export default function LiveSession() {
       .catch(() => {})
       .finally(() => setLoadingC(false))
   }, [])
+
+  /* ── on mount: check for already-active session ── */
+  useEffect(() => {
+    async function checkActive() {
+      try {
+        const data = await api.get('/sessions?status=live&per_page=10')
+        const list = Array.isArray(data) ? data : (data?.sessions ?? data?.items ?? [])
+        const live = list.find(s => !s.ended_at)
+        if (!live) return
+
+        // Restore session state
+        setSession(live)
+        const code = live.session_code ?? live.qr_token ?? String(live.id)
+        setSessionCode(code)
+
+        // Calculate elapsed seconds from started_at
+        if (live.started_at) {
+          const elapsed = Math.floor((Date.now() - new Date(live.started_at).getTime()) / 1000)
+          setElapsedSec(Math.max(0, elapsed))
+        }
+
+        // Get a fresh QR code
+        try {
+          const renewed = await api.post(`/sessions/${live.id}/renew-qr`)
+          if (renewed?.qr_image_base64) setQrImage(renewed.qr_image_base64)
+          if (renewed?.qr_token ?? renewed?.session_code) {
+            setSessionCode(renewed.qr_token ?? renewed.session_code)
+          }
+        } catch {
+          setQrImage(live.qr_image_base64 ?? null)
+        }
+
+        setQrCountdown(QR_INTERVAL)
+        setQrSeed(1)
+        setPhase('active')
+      } catch {
+        // no active session or endpoint not available — stay on setup
+      }
+    }
+    checkActive()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── start session ── */
   const handleStart = useCallback(async ({ course_id, location, use_geo_fence }) => {
@@ -267,7 +294,9 @@ export default function LiveSession() {
         setAttendeeCount(data?.total_present ?? records.length)
         const mapped = records.slice(0, 8).map(r => {
           const s = r.student ?? r
-          const name = s?.user?.full_name ?? s?.full_name ?? s?.name ?? `#${s?.id}`
+          const userFirst = s?.user?.first_name ?? ''
+          const userLast = s?.user?.last_name ?? ''
+          const name = (userFirst + ' ' + userLast).trim() || s?.full_name || s?.name || `#${s?.id}`
           return {
             id:       s?.id ?? r.student_id,
             name,

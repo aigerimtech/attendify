@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, MapPin, Clock, Users, Calendar, Loader2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { ChevronLeft, ChevronRight, MapPin, Clock, Users, Calendar, Loader2, AlertTriangle } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { api } from '../api/client'
 
@@ -40,46 +40,60 @@ const DAY_ENUM_MAP = {
 }
 
 /* ── Build calendar courses from API data ─────────────────────── */
-function buildCalendarCourse(course, slots, paletteIndex) {
+function buildCalendarCourse(course, slots, paletteIndex, studentCount = 0) {
   const palette = PALETTES[paletteIndex % PALETTES.length]
-  // Group slots by time (show each time block once per day)
-  // Each slot = one calendar event entry with days array
-  // Simplest: flatten slots → one entry per slot (day + time)
   if (!slots || slots.length === 0) {
     return [{
       id:       course.id,
+      courseId: course.id,
       code:     course.code ?? `C${course.id}`,
       name:     course.name ?? '',
       days:     [],
       start:    '09:00',
       end:      '10:00',
       location: '',
-      students: 0,
+      students: studentCount,
       ...palette,
     }]
   }
 
-  // Group slots with same start+end time → merge days
-  const groups = {}
-  for (const slot of slots) {
-    const key = `${slot.start_time}-${slot.end_time}`
-    if (!groups[key]) groups[key] = { start: slot.start_time, end: slot.end_time, days: [], room: slot.room }
+  return slots.map((slot, si) => {
     const dayIdx = DAY_ENUM_MAP[slot.day_of_week]
-    if (dayIdx !== undefined) groups[key].days.push(dayIdx)
-  }
+    return {
+      id:       `${course.id}-${si}`,
+      courseId: course.id,
+      code:     course.code ?? `C${course.id}`,
+      name:     course.name ?? '',
+      days:     dayIdx !== undefined ? [dayIdx] : [],
+      start:    slot.start_time,
+      end:      slot.end_time,
+      location: slot.room ?? '',
+      students: studentCount,
+      ...palette,
+    }
+  })
+}
 
-  return Object.values(groups).map((g, gi) => ({
-    id:       `${course.id}-${gi}`,
-    courseId: course.id,
-    code:     course.code ?? `C${course.id}`,
-    name:     course.name ?? '',
-    days:     g.days,
-    start:    g.start,
-    end:      g.end,
-    location: g.room ?? '',
-    students: 0,
-    ...palette,
-  }))
+/* ── Conflict detection ───────────────────────────────────────── */
+function overlaps(a, b) {
+  const sharedDays = a.days.filter(d => b.days.includes(d))
+  if (sharedDays.length === 0) return false
+  const startA = toMin(a.start), endA = toMin(a.end)
+  const startB = toMin(b.start), endB = toMin(b.end)
+  return startA < endB && startB < endA
+}
+
+function getConflictIds(courses) {
+  const ids = new Set()
+  for (let i = 0; i < courses.length; i++) {
+    for (let j = i + 1; j < courses.length; j++) {
+      if (overlaps(courses[i], courses[j])) {
+        ids.add(courses[i].id)
+        ids.add(courses[j].id)
+      }
+    }
+  }
+  return ids
 }
 
 /* ── Time helpers ─────────────────────────────────────────────── */
@@ -103,12 +117,13 @@ function fmt12Full(t) {
 const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i)
 
 /* ── Event block ──────────────────────────────────────────────── */
-function EventBlock({ course, isSelected, onSelect, isDark }) {
+function EventBlock({ course, isSelected, onSelect, isDark, hasConflict }) {
   const top    = toY(course.start)
   const height = toH(course.start, course.end)
   const isShort = height < HOUR_PX
-  const bg      = isDark ? course.darkBg    : course.bg
-  const color   = isDark ? course.darkColor  : course.color
+  const bg      = hasConflict ? (isDark ? '#2d0a12' : '#fff1f2') : (isDark ? course.darkBg    : course.bg)
+  const color   = hasConflict ? (isDark ? '#fda4af' : '#9f1239') : (isDark ? course.darkColor  : course.color)
+  const dotColor = hasConflict ? '#f43f5e' : course.dot
 
   return (
     <div
@@ -118,24 +133,29 @@ function EventBlock({ course, isSelected, onSelect, isDark }) {
         top:       `${top}px`,
         height:    `${height}px`,
         background: bg,
-        borderLeft: `3px solid ${course.dot}`,
-        boxShadow:  isSelected
-          ? `0 4px 16px ${course.dot}30`
-          : '0 1px 2px rgba(0,0,0,.05)',
+        borderLeft: `3px solid ${dotColor}`,
+        boxShadow:  hasConflict
+          ? '0 0 0 1px #fca5a5, 0 2px 8px rgba(239,68,68,.25)'
+          : isSelected
+            ? `0 4px 16px ${course.dot}30`
+            : '0 1px 2px rgba(0,0,0,.05)',
         zIndex:     isSelected ? 10 : 2,
         opacity:    isSelected ? 1 : 0.92,
       }}
     >
       <div className="px-2 py-1.5 h-full flex flex-col gap-0.5">
-        <p className="text-[11px] font-bold leading-tight truncate" style={{ color }}>
-          {course.code}
-        </p>
+        <div className="flex items-center gap-1">
+          <p className="text-[11px] font-bold leading-tight truncate" style={{ color }}>
+            {course.code}
+          </p>
+          {hasConflict && <span className="text-[9px] font-bold text-red-500 flex-shrink-0">⚠</span>}
+        </div>
         {!isShort && (
           <p className="text-[10px] leading-tight truncate" style={{ color, opacity: 0.65 }}>
             {course.name}
           </p>
         )}
-        <p className="text-[9px] font-medium mt-auto" style={{ color: course.dot }}>
+        <p className="text-[9px] font-medium mt-auto" style={{ color: dotColor }}>
           {fmt12(course.start)}–{fmt12(course.end)}
         </p>
       </div>
@@ -209,12 +229,20 @@ export default function Schedule() {
         const d = await api.get('/courses')
         const list = Array.isArray(d) ? d : (d?.courses ?? [])
 
-        // Fetch schedule slots for each course in parallel
+        // Fetch schedule slots AND stats for each course in parallel
         const withSlots = await Promise.all(
           list.map((c, i) =>
-            api.get(`/courses/${c.id}/schedule`)
-              .then(slots => buildCalendarCourse(c, Array.isArray(slots) ? slots : [], i))
-              .catch(() => buildCalendarCourse(c, [], i))
+            Promise.all([
+              api.get(`/courses/${c.id}/schedule`).catch(() => []),
+              api.get(`/courses/${c.id}/stats`).catch(() => ({ student_count: 0 })),
+            ]).then(([slots, stats]) =>
+              buildCalendarCourse(
+                c,
+                Array.isArray(slots) ? slots : [],
+                i,
+                stats?.student_count ?? 0
+              )
+            )
           )
         )
 
@@ -243,6 +271,8 @@ export default function Schedule() {
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0
   }, [])
+
+  const conflictIds = getConflictIds(COURSES)
 
   const borderColor = isDark ? '#2e2c48' : '#e8eaff'
   const borderSub   = isDark ? '#1e1c30' : '#f0f2ff'
@@ -315,6 +345,17 @@ export default function Schedule() {
       {!loading && COURSES.length === 0 && (
         <div className="card p-8 text-center text-slate-400 text-sm mb-4">
           No courses found. Create a course first to see your schedule.
+        </div>
+      )}
+
+      {!loading && conflictIds.size > 0 && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm mb-4"
+          style={{ background: '#fff1f2', color: '#9f1239', border: '1px solid #fecdd3' }}>
+          <AlertTriangle size={15} className="flex-shrink-0" />
+          <span>
+            <strong>Schedule conflict detected:</strong> {conflictIds.size} course slot{conflictIds.size > 1 ? 's' : ''} overlap in time.
+            Conflicting classes are highlighted in red.
+          </span>
         </div>
       )}
 
@@ -408,6 +449,7 @@ export default function Schedule() {
                       isSelected={selected?.id === course.id}
                       onSelect={setSelected}
                       isDark={isDark}
+                      hasConflict={conflictIds.has(course.id)}
                     />
                   ))}
                 </div>
