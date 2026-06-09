@@ -98,12 +98,7 @@ def decode_image(req):
         if image.mode != 'RGB':
             image = image.convert('RGB')
         unknown_image = np.array(image)
-        h, w = unknown_image.shape[:2]
-        if max(h, w) < 500:
-            scale = 500 / max(h, w)
-            new_size = (int(w * scale), int(h * scale))
-            image_resized = image.resize(new_size, Image.LANCZOS)
-            unknown_image = np.array(image_resized)
+        # Upscaling disabled for performance
         return unknown_image
     except Exception as e:
         print(f"[decode_image] error: {e}")
@@ -112,7 +107,7 @@ def decode_image(req):
 
 def detect_faces(unknown_image):
     face_locations = face_recognition.face_locations(
-        unknown_image, number_of_times_to_upsample=2
+        unknown_image, number_of_times_to_upsample=1
     )
     if len(face_locations) == 0:
         h2, w2 = unknown_image.shape[:2]
@@ -120,7 +115,7 @@ def detect_faces(unknown_image):
         padded = np.pad(unknown_image, ((pad, pad), (pad, pad), (0, 0)),
                         mode='constant', constant_values=255)
         face_locations = face_recognition.face_locations(
-            padded, number_of_times_to_upsample=2
+            padded, number_of_times_to_upsample=1
         )
         if len(face_locations) > 0:
             unknown_image = padded
@@ -213,7 +208,6 @@ def liveness():
     if lap_var < LIVENESS_THRESHOLD:
         return jsonify({'is_live': False, 'reason': 'blur', 'liveness_score': round(lap_var, 2)})
 
-    # Blink detection — sıralı: önce kapat sonra aç
     landmarks_list = face_recognition.face_landmarks(unknown_image, face_locations)
     if not landmarks_list \
        or 'left_eye' not in landmarks_list[0] \
@@ -257,4 +251,4 @@ if __name__ == '__main__':
     print("  POST /liveness  → Laplacian + blink")
     print(f"  MATCH_TOLERANCE:    {MATCH_TOLERANCE}")
     print(f"  LIVENESS_THRESHOLD: {LIVENESS_THRESHOLD}")
-    app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001, threaded=True)
