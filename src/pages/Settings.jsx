@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   User,
   Bell,
@@ -9,7 +9,6 @@ import {
   Save,
   Eye,
   EyeOff,
-  MapPin,
   AlertTriangle,
   Check,
 } from 'lucide-react'
@@ -65,8 +64,6 @@ const defaultProfile = {
 
 const defaultNotifications = {
   emailAlerts: true,
-  lowAttendance: true,
-  sessionStart: false,
   weeklyReport: true,
   atRiskAlert: true,
 }
@@ -104,10 +101,16 @@ export default function Settings() {
 
   const [notifications, setNotifications] = useState(saved_s?.notifications || defaultNotifications)
   const [security, setSecurity] = useState(saved_s?.security || defaultSecurity)
-  const [geoRadius, setGeoRadius] = useState(saved_s?.geoRadius ?? 50)
   const [absenceThreshold, setAbsenceThreshold] = useState(saved_s?.absenceThreshold ?? 20)
-  const [qrInterval, setQrInterval] = useState(saved_s?.qrInterval || '30 seconds')
-  const [faceVerification, setFaceVerification] = useState(saved_s?.faceVerification ?? true)
+
+  // Load system config from backend on mount
+  useEffect(() => {
+    api.get('/settings/system-config')
+      .then((cfg) => {
+        if (cfg?.absence_threshold != null) setAbsenceThreshold(cfg.absence_threshold)
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChangePassword = useCallback(async (e) => {
     e.preventDefault()
@@ -159,8 +162,15 @@ export default function Settings() {
       // non-critical — still save locally
     }
 
-    // save local prefs (notifications, system config) to localStorage
-    const settings = { profile, notifications, security, geoRadius, absenceThreshold, qrInterval, faceVerification }
+    // Save absence threshold to backend
+    try {
+      await api.patch('/settings/system-config', { absence_threshold: absenceThreshold })
+    } catch {
+      // non-critical
+    }
+
+    // save local prefs to localStorage
+    const settings = { profile, notifications, security, absenceThreshold }
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
     setSaved(true)
     addToast('Settings saved successfully')
@@ -259,11 +269,9 @@ export default function Settings() {
         <Section title="Notification Preferences" icon={Bell}>
           <div className="space-y-4">
             {[
-              { key: 'emailAlerts', label: 'Email Alerts', desc: 'Receive email notifications for important events' },
-              { key: 'lowAttendance', label: 'Low Attendance Warning', desc: 'Alert when session attendance drops below 70%' },
-              { key: 'sessionStart', label: 'Session Start Reminder', desc: 'Remind 15 minutes before each session' },
-              { key: 'weeklyReport', label: 'Weekly Summary Report', desc: 'Receive weekly attendance analytics by email' },
-              { key: 'atRiskAlert', label: 'At-Risk Student Alert', desc: 'Notify when a student crosses absence threshold' },
+              { key: 'emailAlerts', label: 'Email Alerts', desc: 'Get notified when students submit attendance or face verification fails' },
+              { key: 'weeklyReport', label: 'Weekly Summary Report', desc: 'Receive a weekly digest of attendance rates per course' },
+              { key: 'atRiskAlert', label: 'At-Risk Student Alert', desc: 'Get alerted when a student crosses the absence threshold set above' },
             ].map(({ key, label, desc }) => (
               <div key={key} className="flex items-center justify-between gap-4 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <div>
@@ -363,28 +371,6 @@ export default function Settings() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                  <MapPin size={14} className="text-primary-600" />
-                  Geo-Fencing Radius
-                </label>
-                <span className="text-sm font-bold text-primary-600">{geoRadius}m</span>
-              </div>
-              <input
-                type="range"
-                min={10}
-                max={200}
-                value={geoRadius}
-                onChange={(e) => setGeoRadius(Number(e.target.value))}
-                className="w-full accent-primary-600"
-              />
-              <div className="flex justify-between text-xs text-slate-400 dark:text-slate-500 mt-1">
-                <span>10m</span>
-                <span>200m</span>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                   <AlertTriangle size={14} className="text-amber-500" />
                   Absence Threshold (%)
                 </label>
@@ -409,26 +395,6 @@ export default function Settings() {
               </p>
             </div>
 
-            <div>
-              <label className={labelCls}>QR Code Refresh Interval</label>
-              <select
-                value={qrInterval}
-                onChange={(e) => setQrInterval(e.target.value)}
-                className={inputCls}
-              >
-                <option>15 seconds</option>
-                <option>30 seconds</option>
-                <option>60 seconds</option>
-              </select>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50">
-              <div>
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Face Verification</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Require face scan in addition to QR code</p>
-              </div>
-              <Toggle checked={faceVerification} onChange={setFaceVerification} />
-            </div>
           </div>
         </Section>
       </div>

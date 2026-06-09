@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { api } from '../api/client'
 
 /* ── LogoMark ─────────────────────────────────────────────────── */
 function LogoMark({ size = 34 }) {
@@ -221,7 +222,23 @@ export default function Layout() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showNotifs, setShowNotifs] = useState(false)
+  const [endingSession, setEndingSession] = useState(false)
   const notifRef = useRef(null)
+
+  const handleEndSession = async () => {
+    setEndingSession(true)
+    try {
+      const data = await api.get('/sessions?status=live&per_page=10')
+      const list = Array.isArray(data) ? data : (data?.sessions ?? data?.items ?? [])
+      const live = list.find(s => !s.ended_at)
+      if (live) await api.post(`/sessions/${live.id}/close`)
+    } catch {
+      // best-effort — navigate regardless
+    } finally {
+      setEndingSession(false)
+      navigate('/dashboard')
+    }
+  }
 
   useEffect(() => {
     function handleClick(e) {
@@ -275,18 +292,14 @@ export default function Layout() {
           {/* Right actions */}
           <div className="flex items-center gap-2 ml-auto">
 
-            {/* Start / End Session */}
-            <div className="hidden sm:block">
-              {isLiveSession ? (
-                <button onClick={() => navigate('/dashboard')} className="btn-danger text-sm">
-                  <span className="w-2 h-2 rounded-full bg-white blink" /> End Session
-                </button>
-              ) : (
+            {/* Start Session - only when no active session */}
+            {!isLiveSession && (
+              <div className="hidden sm:block">
                 <button onClick={() => navigate('/sessions/live')} className="btn-primary text-sm">
                   <Play size={14} /> Start Session
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Dark mode toggle */}
             <button
@@ -354,8 +367,8 @@ export default function Layout() {
             <div style={{ borderTop: isDark ? '1px solid #2e2c48' : '1px solid #e0e7ff' }} />
             <div className="px-4 py-3 sm:hidden">
               {isLiveSession ? (
-                <button onClick={() => navigate('/dashboard')} className="btn-danger text-sm w-full justify-center">
-                  <span className="w-2 h-2 rounded-full bg-white blink" /> End Session
+                <button onClick={handleEndSession} disabled={endingSession} className="btn-danger text-sm w-full justify-center disabled:opacity-70">
+                  <span className="w-2 h-2 rounded-full bg-white blink" /> {endingSession ? 'Ending…' : 'End Session'}
                 </button>
               ) : (
                 <button onClick={() => navigate('/sessions/live')} className="btn-primary text-sm w-full justify-center">

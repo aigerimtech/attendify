@@ -159,21 +159,21 @@ export default function Sessions() {
     const rows = filtered.map((s) => {
       const attended = s.attended_count ?? 0
       const total    = s.total_enrolled ?? s.enrolled_count ?? s.total ?? 0
-      const pct      = total > 0 ? `${Math.round((attended / total) * 100)}%` : '—'
+      const pct      = total > 0 ? `${Math.round((attended / total) * 100)}%` : '-'
       return [
         fmtDate(s.started_at || s.date || s.created_at),
         `"${s.course_name ?? s.course_code ?? ''}"`,
         s.course_code ?? '',
         `"${s.location ?? ''}"`,
-        `"${fmtTime(s.start_time, s.end_time)}"`,
+        `"${s.started_at ? new Date(s.started_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "-"}"`,
         attended,
         total,
-        normStatus(s.status) === 'upcoming' ? '—' : pct,
+        normStatus(s.status) === 'upcoming' ? '-' : pct,
         normStatus(s.status),
       ]
     })
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
