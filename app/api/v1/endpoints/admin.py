@@ -78,7 +78,32 @@ def delete_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
+
+    # Manually delete related records to avoid FK constraint issues
+    from app.models.models import (
+        FaceEmbedding, Student, Instructor, Enrollment, AttendanceRecord,
+        PendingAttendance,
+    )
+    from sqlalchemy import text
+
+    # Delete notification_preferences and password_reset_tokens via raw SQL
+    db.execute(text("DELETE FROM notification_preferences WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(text("DELETE FROM password_reset_tokens WHERE user_id = :uid"), {"uid": user_id})
+    db.execute(text("DELETE FROM system_configs WHERE user_id = :uid"), {"uid": user_id})
+
+    # Delete student-related data
+    student = db.query(Student).filter(Student.user_id == user_id).first()
+    if student:
+        db.execute(text("DELETE FROM face_embeddings WHERE student_id = :sid"), {"sid": student.id})
+        db.execute(text("DELETE FROM attendance_records WHERE student_id = :sid"), {"sid": student.id})
+        db.execute(text("DELETE FROM pending_attendances WHERE student_id = :sid"), {"sid": student.id})
+        db.execute(text("DELETE FROM enrollments WHERE student_id = :sid"), {"sid": student.id})
+        db.execute(text("DELETE FROM students WHERE id = :sid"), {"sid": student.id})
+
+    # Delete instructor
+    db.execute(text("DELETE FROM instructors WHERE user_id = :uid"), {"uid": user_id})
+
+    db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": user_id})
     db.commit()
     return MessageResponse(message=f"User {user_id} deleted")
 
